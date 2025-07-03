@@ -6,6 +6,8 @@
 
 html { 
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 * { 
@@ -127,8 +129,9 @@ ol li {
 }
 
 #main { 
-  width: 950px;
-  margin: 20px auto 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 header { 
@@ -170,12 +173,8 @@ nav {
 } 
 
 #site_content { 
-  width: 950px;
-  overflow: hidden;
-  margin: 4px auto 0 auto;
-  padding: 0;
-  border-top: 0;
-  border-bottom: 0;
+
+  flex: 1;
 } 
 
 #sidebar_container { 
@@ -437,9 +436,13 @@ ul#images li {
 
 
 @media screen and (max-width: 768px) {
+  html, body {
+    font-size: 1.05em;
+  }
+
   #main, header, nav, #site_content, footer {
     width: 100%;
-    padding: 0 10px;
+    padding: 0 5%;
   }
 
   #site_content {
@@ -463,7 +466,7 @@ ul#images li {
   nav {
     float: none;
     text-align: center;
-    padding: 10px 0;
+    padding: 15px 0;
     width: 100%;
   }
 
@@ -472,4 +475,33 @@ ul#images li {
     text-align: center;
     margin-bottom: 20px;
   }
+
+  h1 {
+    font-size: 2.2em;
+  }
+
+  h2 {
+    font-size: 2em;
+  }
+
+  h3 {
+    font-size: 1.5em;
+  }
+
+  p, li, input, textarea, label, .form_settings span {
+    font-size: 1.1em;
+  }
+
+  .form_settings input, 
+  .form_settings textarea,
+  .form_settings select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .form_settings .submit {
+    margin-left: 0;
+    width: 100%;
+  }
 }
+
