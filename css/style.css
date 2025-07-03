@@ -20,7 +20,6 @@ article, aside, figure, footer, header, hgroup, nav, section {
 
 body { 
   font: normal .85em arial, sans-serif;
-  background: #F5F5F5 url(../images/pattern.png);
   color: #444;
   padding-bottom: 40px;
 }
@@ -219,7 +218,6 @@ nav {
 
 #content ul li, .sidebar ul li { 
   list-style-type: none;
-  background: transparent url(../images/bullet.png) no-repeat left center;
   margin: 0 0 0 0; 
   padding: 2px 0 2px 28px;
   line-height: 1.5em;
@@ -351,6 +349,7 @@ ul#images li {
 /* from here: http://www.gmarwaha.com/blog/2007/08/23/lavalamp-for-jquery-lovers */
 .lavaLampWithImage {
   position: relative;
+  border-style: dashed;
   height: 25px;
   padding: 15px 5px 15px 0;
   margin: 10px 0 0 0;
@@ -393,4 +392,84 @@ ul#images li {
 
 .lavaLampWithImage li a:hover, .lavaLampWithImage li a:active, .lavaLampWithImage li a:visited {
   border: none;
+  background-color: rgb(218, 218, 218);
+}
+
+/* === Coming Soon Page Styles === */
+.coming-soon-container {
+  max-width: 500px;
+  margin: 10vh auto;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.coming-soon-container h1 {
+  font-size: 2em;
+  color: #222;
+  margin-bottom: 15px;
+}
+
+.coming-soon-container p {
+  font-size: 1.1em;
+  color: #666;
+}
+
+.coming-soon-container a {
+  display: inline-block;
+  margin-top: 20px;
+  color: #000;
+  text-decoration: underline;
+}
+
+.coming-soon-container a:hover {
+  color: #666;
+}
+
+@media (max-width: 600px) {
+  .coming-soon-container {
+    margin: 0 20px;
+    padding: 20px;
+  }
+}
+
+
+@media screen and (max-width: 768px) {
+  #main, header, nav, #site_content, footer {
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  #site_content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  #sidebar_container, #content {
+    width: 100%;
+    float: none;
+    height: auto;
+    padding: 0;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 0;
+  }
+
+  nav {
+    float: none;
+    text-align: center;
+    padding: 10px 0;
+    width: 100%;
+  }
+
+  #logo {
+    float: none;
+    text-align: center;
+    margin-bottom: 20px;
+  }
 }
