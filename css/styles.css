@@ -1,0 +1,153 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    background-color: #E3E2DC;
+}
+
+/* Content wrapper */
+.container {
+    max-width: 800px;   /* adjust as needed */
+    margin: 0 auto;     /* center horizontally */
+    padding: 0 20px;    /* side padding for mobile */
+    text-align: center; /* keeps all inner content centered */
+}
+
+h2 {
+    margin: 30px 0 20px 0; /* spacing above/below */
+}
+  
+  
+
+header img {
+    max-width: 200px;
+    margin: 20px auto;
+    display: block;
+}
+
+nav {
+    margin: 15px 0;
+    border-style: dashed;
+    border: #333;
+}
+
+/* Nav bar links */
+nav a {
+    margin: 0 15px;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+}
+  
+
+.content {
+    margin: 30px 20px;
+}
+
+.phone-image {
+    margin: 20px auto;
+    text-align: center;   /* keeps the image centered */
+    background-color: transparent; /* remove grey background */
+    width: 100%;
+    max-width: 350px;     /* cap the max width */
+  }
+  
+.phone-image img {
+    width: 100%;          /* responsive scaling */
+    height: auto;         /* maintain aspect ratio */
+    display: block;
+    margin: 0 auto;
+}
+  
+
+.hidden-images {
+    max-height: 0;             /* start collapsed */
+    opacity: 0;                /* invisible */
+    overflow: hidden;          /* hide contents */
+    transition: max-height 0.5s ease, opacity 0.5s ease;
+}
+  
+.hidden-images.visible {
+    max-height: 500px;         /* big enough to show your content */
+    opacity: 1;                /* fade in */
+}
+  
+.hidden-images img {
+    width: 150px;
+    margin: 10px 10px;
+}
+
+.social-section {
+    margin-top: 40px;
+    padding-top: 20px;
+    padding-bottom: 40px; /* adds spacing before bottom of screen */
+    text-align: center;
+}
+  
+
+.social-section::before {
+    content: "";
+    display: block;
+    width: 80px;               /* adjust width as needed */
+    height: 2px;
+    background-color: #333; /* brand orange */
+    margin: 0 auto 20px auto;  /* center the line, add spacing below */
+}
+  
+.social-text {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 15px;
+}
+  
+.social-icons a {
+    margin: 0 8px;
+    display: inline-block;
+}
+  
+.social-icons img {
+    width: 32px;
+    height: 32px;
+    transition: transform 0.3s ease;
+}
+  
+.social-icons img:hover {
+    transform: scale(1.1);
+}
+  
+.store-badges {
+    display: inline-block;         /* keeps it centered and sized to content */
+    padding: 20px;
+    margin-top: 15px;
+    border: 2px solid #ff4d00;     /* brand orange border */
+    border-radius: 12px;           /* rounded corners */
+    background-color: #fff;        /* white background for contrast */
+    text-align: center;
+}
+  
+.store-badges a {
+    margin: 0 10px;
+    display: inline-block;
+}
+  
+.store-badges img {
+    vertical-align: middle;
+}
+  
+
+/* Reusable hover class */
+.hover-highlight {
+    transition: background-color 0.3s ease, color 0.3s ease;
+    border-radius: 6px;
+    padding: 5px 10px;
+}
+  
+.hover-highlight:hover {
+    background-color: #ff4d00; /* orange background */
+    color: #fff;              /* white text */
+}
+  
+
+
+  

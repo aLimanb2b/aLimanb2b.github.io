@@ -1,0 +1,39 @@
+/* === Coming Soon Page Styles === */
+.coming-soon-container {
+    max-width: 500px;
+    margin: 10vh auto;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  
+  .coming-soon-container h1 {
+    font-size: 2em;
+    color: #222;
+    margin-bottom: 15px;
+  }
+  
+  .coming-soon-container p {
+    font-size: 1.1em;
+    color: #666;
+  }
+  
+  .coming-soon-container a {
+    display: inline-block;
+    margin-top: 20px;
+    color: #000;
+    text-decoration: underline;
+  }
+  
+  .coming-soon-container a:hover {
+    color: #666;
+  }
+  
+  @media (max-width: 600px) {
+    .coming-soon-container {
+      margin: 0 20px;
+      padding: 20px;
+    }
+  }
