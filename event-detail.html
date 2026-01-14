@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <title>Event Details | BoxtoBox</title>
+  </head>
+  <body>
+    <div class="container">
+      <div id="header"></div>
+
+      <section class="event-detail">
+        <div class="event-detail-card" id="event-detail-card">
+          <a class="event-back" href="events.html">&larr; Back to events</a>
+          <div class="event-detail-header">
+            <h1 id="event-title">Event</h1>
+            <p id="event-summary"></p>
+          </div>
+
+          <div class="event-detail-grid" id="event-detail-grid">
+            <div class="event-detail-item">
+              <p class="label">Date</p>
+              <p id="event-date">TBD</p>
+            </div>
+            <div class="event-detail-item">
+              <p class="label">Location</p>
+              <p id="event-location">TBD</p>
+            </div>
+            <div class="event-detail-item">
+              <p class="label">Registration</p>
+              <p id="event-registration">TBD</p>
+            </div>
+            <div class="event-detail-item">
+              <p class="label">Spots</p>
+              <p id="event-spots">TBD</p>
+            </div>
+          </div>
+
+          <div class="event-detail-body" id="event-description-wrapper">
+            <h2>About</h2>
+            <p id="event-description"></p>
+          </div>
+        </div>
+      </section>
+
+      <div id="footer"></div>
+
+      <script src="js/load_headerfooter.js"></script>
+      <script src="js/event-detail.js"></script>
+    </div>
+  </body>
+</html>

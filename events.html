@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <title>Events | BoxtoBox</title>
+  </head>
+  <body>
+    <div class="container">
+      <div id="header"></div>
+
+      <section class="events-hero">
+        <div>
+          <p class="eyebrow">Find your next match</p>
+          <h1>Events</h1>
+          <p>Search upcoming tournaments, pickup games, and community fixtures.</p>
+        </div>
+      </section>
+
+      <section class="events-search">
+        <div class="search-bar">
+          <input
+            type="search"
+            id="event-search-input"
+            placeholder="Search events by title"
+            aria-label="Search events by title"
+          >
+          <a class="btn-primary" href="events-all.html">View all events</a>
+        </div>
+        <div class="search-status" id="event-search-status">Type to search or view all events.</div>
+        <ul class="event-search-list" id="event-results"></ul>
+      </section>
+
+      <div id="footer"></div>
+
+      <script src="js/load_headerfooter.js"></script>
+      <script src="js/events.js"></script>
+    </div>
+  </body>
+</html>
