@@ -7,6 +7,10 @@ const registrationEl = document.getElementById("event-registration");
 const spotsEl = document.getElementById("event-spots");
 const descriptionEl = document.getElementById("event-description");
 const descriptionWrapper = document.getElementById("event-description-wrapper");
+const rulesEl = document.getElementById("event-rules");
+const rulesWrapper = document.getElementById("event-rules-wrapper");
+const posterEl = document.getElementById("event-poster");
+const posterPlaceholderEl = document.getElementById("event-poster-placeholder");
 
 function formatDate(value) {
   if (!value) {
@@ -24,7 +28,20 @@ function formatDate(value) {
 }
 
 function formatLocation(event) {
-  return event.address_name || event.city || event.region || "TBA";
+  const address = event.address_name ? String(event.address_name).trim() : "";
+  const city = event.city ? String(event.city).trim() : "";
+  const region = event.region ? String(event.region).trim() : "";
+
+  if (address && city) {
+    return `${address}, ${city}`;
+  }
+  if (address) {
+    return address;
+  }
+  if (city && region) {
+    return `${city}, ${region}`;
+  }
+  return city || region || "TBA";
 }
 
 function getSummary(event) {
@@ -42,6 +59,28 @@ function getDescription(event) {
     event.details ||
     event.overview ||
     event.notes ||
+    ""
+  );
+}
+
+function getRules(event) {
+  return (
+    event.rules ||
+    event.rulebook ||
+    event.rules_text ||
+    ""
+  );
+}
+
+function getEventImage(event) {
+  return (
+    event.poster_path ||
+    event.image_url ||
+    event.image ||
+    event.banner_url ||
+    event.cover_image ||
+    event.thumbnail ||
+    event.poster_url ||
     ""
   );
 }
@@ -83,6 +122,28 @@ function renderEvent(event) {
     descriptionEl.textContent = description;
   } else {
     descriptionWrapper.style.display = "none";
+  }
+
+  const rules = getRules(event).trim();
+  if (rules && rulesEl && rulesWrapper) {
+    rulesEl.textContent = rules;
+  } else if (rulesWrapper) {
+    rulesWrapper.style.display = "none";
+  }
+
+  if (posterEl && posterPlaceholderEl) {
+    const poster = getEventImage(event);
+    if (poster) {
+      posterEl.src = poster;
+      posterEl.alt = event.title ? `${event.title} poster` : "Event poster";
+      posterEl.style.display = "block";
+      posterPlaceholderEl.style.display = "none";
+    } else {
+      const label = (event.title || "Event").trim();
+      posterPlaceholderEl.textContent = label ? label[0].toUpperCase() : "E";
+      posterPlaceholderEl.style.display = "flex";
+      posterEl.style.display = "none";
+    }
   }
 }
 

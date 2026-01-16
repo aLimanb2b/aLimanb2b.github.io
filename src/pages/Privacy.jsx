@@ -1,0 +1,178 @@
+export default function Privacy() {
+  return (
+    <>
+      <h1>Privacy Policy</h1>
+
+      <div className="legal-wrapper">
+        <p className="legal-meta">Last updated: [18/12/25]</p>
+        <p>
+          This Privacy Policy describes how BOXTOBOX LTD ("Company", "we", "us", or "our")
+          collects, uses, stores, and discloses personal data of users (each, a "User") of the
+          Box to Box mobile application (the "App").
+        </p>
+        <p>
+          This Policy is issued in compliance with the relevant data protection laws and applies
+          solely to the Box to Box App and services offered through it.
+        </p>
+
+        <div className="legal-section">
+          <h2>1. Personal Data We Collect</h2>
+          <p>We collect limited personal data only, namely:</p>
+          <ul>
+            <li>Name</li>
+            <li>Country</li>
+            <li>Email address</li>
+          </ul>
+          <p>This information is collected when a user registers for an event through the App.</p>
+          <p>We do not collect:</p>
+          <ul>
+            <li>phone numbers;</li>
+            <li>payment or financial information;</li>
+            <li>precise location data;</li>
+            <li>biometric data; or</li>
+            <li>sensitive personal data.</li>
+          </ul>
+        </div>
+
+        <div className="legal-section">
+          <h2>3. How We Collect Personal Data</h2>
+          <p>
+            Personal data is collected directly from users when they voluntarily submit their
+            information through the App's registration process.
+          </p>
+          <p>The App does not permit anonymous event registration.</p>
+        </div>
+
+        <div className="legal-section">
+          <h2>4. Lawful Basis for Processing</h2>
+          <p>
+            We process personal data in accordance with the Nigeria Data Protection Act, 2023 on the
+            following lawful bases:
+          </p>
+          <ul>
+            <li>Performance of a contract - to enable event registration and participation.</li>
+            <li>Consent - where users voluntarily provide their name and email address.</li>
+            <li>
+              Legitimate interests - limited to managing events and communicating essential event-
+              related information, provided such interests do not override users' rights.
+            </li>
+          </ul>
+        </div>
+
+        <div className="legal-section">
+          <h2>5. Purposes of Processing</h2>
+          <p>We use collected personal data strictly to:</p>
+          <ul>
+            <li>register users for events;</li>
+            <li>communicate important event-related updates;</li>
+            <li>manage attendance and event administration; and</li>
+            <li>comply with legal or regulatory obligations.</li>
+          </ul>
+          <p>We do not use personal data for targeted advertising, profiling, or automated decision-making.</p>
+        </div>
+
+        <div className="legal-section">
+          <h2>6. Data Retention</h2>
+          <p>
+            Personal data is retained only for as long as necessary to administer the relevant event
+            and meet legal or regulatory requirements.
+          </p>
+          <p>
+            After completion of the event, personal data may be deleted or anonymised unless a
+            longer retention period is required by law.
+          </p>
+        </div>
+
+        <div className="legal-section">
+          <h2>7. Data Sharing and Disclosure</h2>
+          <p>We do not sell, rent, or trade personal data.</p>
+          <p>Personal data may be shared only with:</p>
+          <ul>
+            <li>authorised service providers assisting with event management; or</li>
+            <li>regulatory or law enforcement authorities where required by law.</li>
+          </ul>
+          <p>All third parties, where engaged, are bound by appropriate data protection obligations.</p>
+        </div>
+
+        <div className="legal-section">
+          <h2>8. Data Security</h2>
+          <p>
+            We implement appropriate technical and organisational measures to safeguard personal data
+            against unauthorised access, loss, misuse, alteration, or disclosure.
+          </p>
+          <p>Access to personal data is limited to authorised personnel strictly on a need-to-know basis.</p>
+        </div>
+
+        <div className="legal-section">
+          <h2>9. Data Subject Rights</h2>
+          <p>In accordance with the applicable laws users have the right to:</p>
+          <ul>
+            <li>access their personal data;</li>
+            <li>request correction of inaccurate or incomplete data;</li>
+            <li>request deletion of personal data where lawful;</li>
+            <li>withdraw consent at any time;</li>
+            <li>object to certain processing activities; and</li>
+            <li>lodge a complaint with the Nigeria Data Protection Commission (NDPC).</li>
+          </ul>
+          <p>
+            Requests may be submitted via{" "}
+            <a href="mailto:Boxtobox.me@gmail.com">Boxtobox.me@gmail.com</a> and will be addressed within
+            the statutory timeframe.
+          </p>
+        </div>
+
+        <div className="legal-section">
+          <h2>10. Children's Data</h2>
+          <p>The Box-to-Box App is not intended for persons under the age of 18.</p>
+          <p>
+            We do not knowingly collect personal data from children. Where processing of children's
+            data is required by law, verifiable parental or guardian consent shall be obtained in
+            accordance with the applicable laws.
+          </p>
+        </div>
+
+        <div className="legal-section">
+          <h2>11. Cross-Border Data Transfers</h2>
+          <p>
+            Personal data is stored in Firebase and processed in Nigeria. Where cross-border transfers
+            become necessary, such transfers shall be carried out in accordance with the safeguards
+            required under the relevant laws.
+          </p>
+        </div>
+
+        <div className="legal-section">
+          <h2>12. Data Breach Notification</h2>
+          <p>In the event of a personal data breach that poses a risk to users' rights and freedoms:</p>
+          <ul>
+            <li>the Nigeria Data Protection Commission (NDPC) will be notified within 72 hours; and</li>
+            <li>affected users will be informed without undue delay where required by law.</li>
+          </ul>
+        </div>
+
+        <div className="legal-section">
+          <h2>13. Changes to This Privacy Policy</h2>
+          <p>
+            We may modify this Privacy Policy at any time in the future. Where this happens, we will
+            communicate the changes to you. Material changes will be communicated through the App or
+            other appropriate means.
+          </p>
+          <p>Continued use of the App after changes take effect constitutes acceptance of the updated Policy.</p>
+        </div>
+
+        <div className="legal-section">
+          <h2>14. Contact Us</h2>
+          <p>If you have any questions about this Privacy Policy or our data practices, contact:</p>
+          <p>
+            <strong>BOXTOBOX LTD</strong>
+            <br />
+            App Name: Box to Box
+            <br />
+            Email: <a href="mailto:Boxtobox.me@gmail.com">Boxtobox.me@gmail.com</a>
+            <br />
+            Address: 9A Inuwa Wada road Kaduna, Kaduna State, Nigeria.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
