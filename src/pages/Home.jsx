@@ -150,12 +150,12 @@ export default function Home() {
             <p>Be the first to know when BoxtoBox is live on iOS and Android.</p>
           </div>
           <div className="store-badges">
-            <NavLink to="/coming-soon">
+            <a href="https://play.google.com/store/apps/details?id=me.boxtobox.boxtobox&pli=1">
               <img
                 src="/images/GetItOnGooglePlay_Badge_Web_color_English.png"
                 alt="Get it on Google Play"
               />
-            </NavLink>
+            </a>
 
             <a href="https://apps.apple.com/gb/app/boxtobox/id6756844810">
               <img
