@@ -52,6 +52,16 @@ export default function Home() {
 
   return (
     <>
+      <div className="events-cta-bar">
+        <div className="events-cta-text">
+          <span>Go to Events</span>
+          <p>See upcoming events, tournaments, and community fixtures.</p>
+        </div>
+        <NavLink className="btn btn-primary" to="/events">
+          Browse events
+        </NavLink>
+      </div>
+
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-copy">

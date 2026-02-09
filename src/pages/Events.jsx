@@ -40,7 +40,7 @@ export default function Events() {
     setStatus("Loading events...");
     const timeout = window.setTimeout(async () => {
       try {
-        const url = new URL(`${API_BASE}/v1/events/search`);
+        const url = new URL(`${API_BASE}/v1.5/events/search`);
         url.searchParams.set("page_size", "10");
         url.searchParams.set("q", trimmed);
         const response = await fetch(url.toString());

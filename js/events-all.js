@@ -76,7 +76,7 @@ function updatePagination() {
 async function fetchPage(page) {
   statusEl.textContent = "Loading events...";
   gridEl.innerHTML = "";
-  const url = new URL(`${API_BASE}/v1/events/search`);
+  const url = new URL(`${API_BASE}/v2/events/search`);
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(PAGE_SIZE));
   try {

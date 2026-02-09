@@ -73,7 +73,7 @@ async function fetchEvents(query) {
   statusEl.textContent = "Loading events...";
   resultsEl.innerHTML = "";
   try {
-    const url = new URL(`${API_BASE}/v1/events/search`);
+    const url = new URL(`${API_BASE}/v2/events/search`);
     url.searchParams.set("page_size", "10");
     if (query) {
       url.searchParams.set("q", query);

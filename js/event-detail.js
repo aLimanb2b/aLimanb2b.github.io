@@ -149,7 +149,7 @@ function renderEvent(event) {
 
 async function fetchEvent(id) {
   try {
-    const response = await fetch(`${API_BASE}/v1/event/${encodeURIComponent(id)}`);
+    const response = await fetch(`${API_BASE}/v2/event/${encodeURIComponent(id)}`);
     if (!response.ok) {
       throw new Error("Failed to load event");
     }

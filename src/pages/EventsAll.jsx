@@ -37,7 +37,7 @@ export default function EventsAll() {
     async function fetchPage(page) {
       setStatus("Loading events...");
       try {
-        const url = new URL(`${API_BASE}/v1/events/search`);
+        const url = new URL(`${API_BASE}/v1.5/events/search`);
         url.searchParams.set("page", String(page));
         url.searchParams.set("page_size", String(PAGE_SIZE));
         const response = await fetch(url.toString());
