@@ -7,6 +7,8 @@ import {
 import { getFirebaseAuth } from "./firebase.js";
 import { apiRequest } from "./api.js";
 
+const DEFAULT_COUNTRY = "Nigeria";
+
 export function getAuthUser() {
   const auth = getFirebaseAuth();
   return auth.currentUser;
@@ -23,7 +25,7 @@ export async function signInWithEmail({ email, password }) {
   return result.user;
 }
 
-export async function registerWithEmail({ name, email, password, country, region }) {
+export async function registerWithEmail({ name, email, password }) {
   const auth = getFirebaseAuth();
   const result = await createUserWithEmailAndPassword(auth, email, password);
   const user = result.user;
@@ -33,8 +35,8 @@ export async function registerWithEmail({ name, email, password, country, region
       body: {
         name,
         email,
-        country: country || region,
-        region: region || country,
+        country: DEFAULT_COUNTRY,
+        region: DEFAULT_COUNTRY,
       },
     });
   }

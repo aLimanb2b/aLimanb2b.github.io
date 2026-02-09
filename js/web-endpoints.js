@@ -1,6 +1,7 @@
 const API_BASE = "https://us-central1-boxtobox-fa0e1.cloudfunctions.net/api";
 const ACCOUNT_STORAGE_KEY = "bb_account_id";
 const AUTH_REQUIRED_MESSAGE = "Authentication required. Please sign in.";
+const DEFAULT_COUNTRY = "Nigeria";
 
 let firebaseAuth = null;
 
@@ -188,7 +189,7 @@ function onAuthStateChanged(callback) {
   return auth.onAuthStateChanged(callback);
 }
 
-async function registerAccount({ accountId, name, email, country, region }) {
+async function registerAccount({ accountId, name, email }) {
   const resolvedAccountId = resolveAccountId(accountId);
   const resolvedEmail = email || (getCurrentUser() ? getCurrentUser().email : "");
   return await request(`/v2/account/${encodeURIComponent(resolvedAccountId)}/create`, {
@@ -196,8 +197,8 @@ async function registerAccount({ accountId, name, email, country, region }) {
     body: {
       name,
       email: resolvedEmail,
-      country: country || region,
-      region: region || country,
+      country: DEFAULT_COUNTRY,
+      region: DEFAULT_COUNTRY,
     },
   });
 }

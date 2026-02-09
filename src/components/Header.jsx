@@ -19,7 +19,6 @@ export default function Header() {
     name: "",
     email: "",
     password: "",
-    country: "",
   });
   const profileRef = useRef(null);
 
@@ -103,7 +102,6 @@ export default function Header() {
           name: formValues.name.trim(),
           email: formValues.email.trim(),
           password: formValues.password,
-          country: formValues.country.trim(),
         });
       } else {
         await signInWithEmail({
@@ -312,18 +310,6 @@ export default function Header() {
                   minLength={6}
                 />
               </label>
-              {authMode === "register" && (
-                <label className="auth-field">
-                  Country / Region
-                  <input
-                    name="country"
-                    type="text"
-                    placeholder="Nigeria"
-                    value={formValues.country}
-                    onChange={handleAuthFieldChange}
-                  />
-                </label>
-              )}
               <button className="auth-submit" type="submit" disabled={authLoading}>
                 {authLoading ? "Please wait..." : authButtonLabel}
               </button>
