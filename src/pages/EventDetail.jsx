@@ -530,8 +530,8 @@ export default function EventDetail() {
                     <p>{paymentDetails?.virtual_account_number || "—"}</p>
                   </div>
                   <div>
-                    <p className="label">Bank code</p>
-                    <p>{paymentDetails?.virtual_bank_code || "—"}</p>
+                    <p className="label">Bank name</p>
+                    <p>WEMA Bank / ALATPay</p>
                   </div>
                   <div>
                     <p className="label">Amount</p>
