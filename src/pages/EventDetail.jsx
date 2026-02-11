@@ -295,12 +295,35 @@ export default function EventDetail() {
     setPaymentError("");
     setPaymentLoading(true);
     try {
+      const accountId = safeGetAuthUser()?.uid || "";
+      if (!accountId) {
+        setPaymentError("Sign in to continue.");
+        return;
+      }
+      if (!registrationOpen) {
+        setPaymentError("Registration is closed.");
+        return;
+      }
+      if (!hasSpots) {
+        setPaymentError("This event is sold out.");
+        return;
+      }
+      if (!isRegistered) {
+        await apiRequest(`/v1.5/event/${encodeURIComponent(eventId)}/register`, {
+          method: "POST",
+          body: {
+            account_id: accountId,
+            register: true,
+          },
+        });
+        await fetchAccountState(eventId);
+      }
       const payload = await apiRequest(
         `/v1.5/event/${encodeURIComponent(eventId)}/payment/bank-transfer/virtual-account`,
         {
           method: "POST",
           body: {
-            account_id: safeGetAuthUser()?.uid || "",
+            account_id: accountId,
             first_name: paymentForm.firstName.trim(),
             last_name: paymentForm.lastName.trim(),
             email: paymentForm.email.trim(),
