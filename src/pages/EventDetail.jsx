@@ -221,7 +221,11 @@ export default function EventDetail() {
   const entryFee = Number(event?.entry_fee ?? 0);
   const paymentRequired =
     typeof event?.payment_required === "boolean" ? event.payment_required : entryFee > 0;
-  const isRegistered = Boolean(accountState?.register) || accountState?.payment_status === "paid";
+  const paymentStatus = String(accountState?.payment_status || "").toLowerCase();
+  const isPaid =
+    Boolean(accountState?.paid) ||
+    ["paid", "success", "successful", "completed", "complete", "approved", "succeeded"].includes(paymentStatus);
+  const isRegistered = Boolean(accountState?.register) || isPaid;
   const registrationOpen = event?.registration_open !== false;
   const remaining = Number(event?.remaining_places ?? event?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
@@ -260,7 +264,7 @@ export default function EventDetail() {
       openAuthModal("signin");
       return;
     }
-    if (!registrationOpen || !hasSpots) {
+    if ((!registrationOpen || !hasSpots) && !isRegistered) {
       return;
     }
     if (paymentRequired && entryFee > 0) {
@@ -300,11 +304,11 @@ export default function EventDetail() {
         setPaymentError("Sign in to continue.");
         return;
       }
-      if (!registrationOpen) {
+      if (!registrationOpen && !isRegistered) {
         setPaymentError("Registration is closed.");
         return;
       }
-      if (!hasSpots) {
+      if (!hasSpots && !isRegistered) {
         setPaymentError("This event is sold out.");
         return;
       }
@@ -423,10 +427,15 @@ export default function EventDetail() {
                 <button
                   className="btn btn-primary"
                   type="button"
-                  disabled={!registrationOpen || !hasSpots || accountLoading || isRegistered}
+                  disabled={
+                    accountLoading ||
+                    (paymentRequired && entryFee > 0
+                      ? isPaid || (!registrationOpen && !isRegistered) || (!hasSpots && !isRegistered)
+                      : isRegistered || !registrationOpen || !hasSpots)
+                  }
                   onClick={handleRegisterClick}
                 >
-                  {isRegistered
+                  {isPaid
                     ? "Registered"
                     : accountLoading
                     ? "Checking..."
@@ -435,7 +444,9 @@ export default function EventDetail() {
                     : !hasSpots
                     ? "Sold out"
                     : paymentRequired && entryFee > 0
-                    ? "Register & Pay"
+                    ? isRegistered
+                      ? "Continue Payment"
+                      : "Register & Pay"
                     : "Register Free"}
                 </button>
               </div>
