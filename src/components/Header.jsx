@@ -120,7 +120,7 @@ export default function Header() {
   return (
     <header className="top-nav">
       <NavLink to="/" className="logo-link" aria-label="BoxtoBox home">
-        <img src="/images/bb_logo.svg" alt="BoxtoBox logo" />
+        <img src="/images/btb_logo.png" alt="BoxtoBox logo" />
       </NavLink>
 
       <input

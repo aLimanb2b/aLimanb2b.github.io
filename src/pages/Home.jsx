@@ -8,7 +8,7 @@ const SLIDES = [
   },
   {
     src: "/images/ios_screenshots/IPhone%20SC-1.png",
-    alt: "BoxtoBox match detail",
+    alt: "BoxtoBox event detail",
   },
   {
     src: "/images/ios_screenshots/IPhone%20SC-2.png",
@@ -16,7 +16,7 @@ const SLIDES = [
   },
   {
     src: "/images/ios_screenshots/IPhone%20SC-3.png",
-    alt: "BoxtoBox fixtures list",
+    alt: "BoxtoBox events list",
   },
   {
     src: "/images/ios_screenshots/IPhone%20SC-4.png",
@@ -55,7 +55,7 @@ export default function Home() {
       <div className="events-cta-bar">
         <div className="events-cta-text">
           <span>Go to Events</span>
-          <p>See upcoming events, tournaments, and community fixtures.</p>
+          <p>See upcoming events, tournaments, and community games.</p>
         </div>
         <NavLink className="btn btn-primary" to="/events">
           Browse events
@@ -65,11 +65,11 @@ export default function Home() {
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-copy">
-            <span className="badge">Built for the beautiful game</span>
-            <h1>Organize matches. Track your stats. Grow your team.</h1>
+            <span className="badge">Built for every sport</span>
+            <h1>Host sports events. Participate. Hassle free.</h1>
             <p>
-              BoxtoBox is the ultimate football companion app for players, coaches, and fans.
-              Plan fixtures, collect performance data, and share your journey with the community.
+              BoxtoBox is a sports events app that connects hosts and participants making it easy to organise, find and participate in different sports.
+              Plan events, collect performance data, and share your journey with the community.
             </p>
             <div className="hero-actions">
               <a className="btn btn-primary" href="#download" onClick={handleDownloadClick}>
@@ -80,8 +80,8 @@ export default function Home() {
               </NavLink>
             </div>
             <div className="hero-meta">
-              <img src="/images/app_icon.svg" alt="BoxtoBox app icon" className="app-icon" />
-              <span>Out now on iOS!</span>
+              <img src="/images/logo_transparent.png" alt="BoxtoBox app icon" className="app-icon" />
+              <span>Out now on iOS & Android!</span>
             </div>
           </div>
 
@@ -131,18 +131,18 @@ export default function Home() {
         <div className="feature-grid">
           <div className="feature-card">
             <div className="icon-circle">M</div>
-            <h3>Match scheduling</h3>
-            <p>Set up events and fixtures, then keep everyone informed with quick updates.</p>
+            <h3>Event scheduling</h3>
+            <p>Set up practices, games, and tournaments, then keep everyone informed with quick updates.</p>
           </div>
           <div className="feature-card">
             <div className="icon-circle">P</div>
             <h3>Performance insights</h3>
-            <p>Track goals, assists, and key metrics so players and coaches can measure progress.</p>
+            <p>Track scores, assists, and key metrics so players and coaches can measure progress.</p>
           </div>
           <div className="feature-card">
             <div className="icon-circle">S</div>
             <h3>Share with friends</h3>
-            <p>Post results, share highlights, and bring your community into every matchday.</p>
+            <p>Post results, share highlights, and bring your community into every game day.</p>
           </div>
           <div className="feature-card">
             <div className="icon-circle">C</div>
@@ -152,12 +152,29 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="host-event">
+        <div className="host-event-card">
+          <div className="host-event-copy">
+            <p className="eyebrow">Host an Event</p>
+            <h2>Want to host with BoxtoBox?</h2>
+            <p>
+              If you are interested in hosting and want to learn more, contact us.
+              We offer a variety of host tools that make event organization and
+              monitoring easier than ever.
+            </p>
+          </div>
+          <NavLink className="btn btn-primary" to="/support">
+            Contact us
+          </NavLink>
+        </div>
+      </section>
+
       <section id="download">
         <div className="download-card">
           <div>
             <p className="eyebrow">Get the app</p>
             <h2>Download the app</h2>
-            <p>Be the first to know when BoxtoBox is live on iOS and Android.</p>
+            <p>Available now on iOS and Android.</p>
           </div>
           <div className="store-badges">
             <a href="https://play.google.com/store/apps/details?id=me.boxtobox.boxtobox&pli=1">
