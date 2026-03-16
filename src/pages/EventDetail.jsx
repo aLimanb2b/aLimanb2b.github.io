@@ -4,6 +4,8 @@ import { apiRequest } from "../lib/api.js";
 import { getAuthUser, observeAuthState } from "../lib/auth.js";
 
 const API_BASE = "https://us-central1-boxtobox-fa0e1.cloudfunctions.net/api";
+const APPLE_APP_URL = "https://apps.apple.com/gb/app/boxtobox/id6756844810";
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=me.boxtobox.boxtobox&pli=1";
 
 function formatDate(value) {
   if (!value) {
@@ -46,7 +48,20 @@ function getDescription(event) {
 }
 
 function getRules(event) {
-  return event.rules || event.rulebook || event.rules_text || "";
+  const source = event.rules ?? event.rulebook ?? event.rules_text ?? [];
+
+  if (Array.isArray(source)) {
+    return source
+      .map((rule) => (typeof rule === "string" ? rule.trim() : ""))
+      .filter(Boolean);
+  }
+
+  if (typeof source === "string") {
+    const normalized = source.trim();
+    return normalized ? [normalized] : [];
+  }
+
+  return [];
 }
 
 function getEventImage(event) {
@@ -72,17 +87,6 @@ export default function EventDetail() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentStep, setPaymentStep] = useState(1);
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [paymentDetails, setPaymentDetails] = useState(null);
-  const [paymentError, setPaymentError] = useState("");
-  const [paymentForm, setPaymentForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-  });
   const safeGetAuthUser = () => {
     try {
       return getAuthUser();
@@ -158,27 +162,6 @@ export default function EventDetail() {
     fetchAccountState(eventId);
   }, [eventId]);
 
-  useEffect(() => {
-    if (!paymentOpen) {
-      return;
-    }
-    const user = safeGetAuthUser();
-    if (!user) {
-      return;
-    }
-    const displayName = user.displayName || "";
-    const parts = displayName.trim().split(" ").filter(Boolean);
-    const firstName = parts[0] || "";
-    const lastName = parts.slice(1).join(" ");
-    setPaymentForm((prev) => ({
-      ...prev,
-      firstName: prev.firstName || firstName,
-      lastName: prev.lastName || lastName,
-      email: prev.email || user.email || "",
-      phoneNumber: prev.phoneNumber || user.phoneNumber || "",
-    }));
-  }, [paymentOpen]);
-
   const detailItems = useMemo(() => {
     if (!event) {
       return [
@@ -217,7 +200,7 @@ export default function EventDetail() {
 
   const poster = event ? getEventImage(event) : "";
   const description = event ? getDescription(event) : "";
-  const rules = event ? getRules(event).trim() : "";
+  const rules = event ? getRules(event) : [];
   const entryFee = Number(event?.entry_fee ?? 0);
   const paymentRequired =
     typeof event?.payment_required === "boolean" ? event.payment_required : entryFee > 0;
@@ -229,6 +212,7 @@ export default function EventDetail() {
   const registrationOpen = event?.registration_open !== false;
   const remaining = Number(event?.remaining_places ?? event?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
+  const paidEventRequiresApp = paymentRequired && entryFee > 0 && !isPaid;
 
   async function fetchAccountState(targetId) {
     const accountId = safeGetAuthUser()?.uid || "";
@@ -267,13 +251,6 @@ export default function EventDetail() {
     if ((!registrationOpen || !hasSpots) && !isRegistered) {
       return;
     }
-    if (paymentRequired && entryFee > 0) {
-      setPaymentError("");
-      setPaymentDetails(null);
-      setPaymentStep(1);
-      setPaymentOpen(true);
-      return;
-    }
     try {
       await apiRequest(`/v1.5/event/${encodeURIComponent(eventId)}/register`, {
         method: "POST",
@@ -286,101 +263,6 @@ export default function EventDetail() {
       setActionMessage("You are registered for this event.");
     } catch (error) {
       setActionError(error?.message || "Unable to register right now.");
-    }
-  };
-
-  const handlePaymentFieldChange = (event) => {
-    const { name, value } = event.target;
-    setPaymentForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const submitBankTransfer = async (event) => {
-    event.preventDefault();
-    setPaymentError("");
-    setPaymentLoading(true);
-    try {
-      const accountId = safeGetAuthUser()?.uid || "";
-      if (!accountId) {
-        setPaymentError("Sign in to continue.");
-        return;
-      }
-      if (!registrationOpen && !isRegistered) {
-        setPaymentError("Registration is closed.");
-        return;
-      }
-      if (!hasSpots && !isRegistered) {
-        setPaymentError("This event is sold out.");
-        return;
-      }
-      if (!isRegistered) {
-        await apiRequest(`/v1.5/event/${encodeURIComponent(eventId)}/register`, {
-          method: "POST",
-          body: {
-            account_id: accountId,
-            register: true,
-          },
-        });
-        await fetchAccountState(eventId);
-      }
-      const payload = await apiRequest(
-        `/v1.5/event/${encodeURIComponent(eventId)}/payment/bank-transfer/virtual-account`,
-        {
-          method: "POST",
-          body: {
-            account_id: accountId,
-            first_name: paymentForm.firstName.trim(),
-            last_name: paymentForm.lastName.trim(),
-            email: paymentForm.email.trim(),
-            phone_number: paymentForm.phoneNumber.trim(),
-          },
-        }
-      );
-      setPaymentDetails(payload);
-      setPaymentStep(2);
-    } catch (error) {
-      setPaymentError(error?.message || "Unable to create virtual account.");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const refreshBankTransfer = async () => {
-    if (!paymentDetails?.transaction_id) {
-      return;
-    }
-    const accountId = safeGetAuthUser()?.uid || "";
-    if (!accountId) {
-      setPaymentError("Sign in to check payment status.");
-      return;
-    }
-    setPaymentError("");
-    setPaymentLoading(true);
-    try {
-      const payload = await apiRequest(
-        `/v1.5/event/${encodeURIComponent(eventId)}/payment/bank-transfer/transaction/${encodeURIComponent(
-          paymentDetails.transaction_id
-        )}`,
-        {
-          query: { account_id: accountId },
-        }
-      );
-      setPaymentDetails(payload);
-      if (String(payload.payment_status || "").toLowerCase() === "paid") {
-        await apiRequest(`/v1.5/event/${encodeURIComponent(eventId)}/register`, {
-          method: "POST",
-          body: {
-            account_id: accountId,
-            register: true,
-          },
-        });
-        await fetchAccountState(eventId);
-        setPaymentOpen(false);
-        setActionMessage("Payment confirmed. You are registered.");
-      }
-    } catch (error) {
-      setPaymentError(error?.message || "Unable to refresh payment status.");
-    } finally {
-      setPaymentLoading(false);
     }
   };
 
@@ -424,35 +306,52 @@ export default function EventDetail() {
                       : "Free event"}
                   </p>
                 </div>
-                <button
-                  className="btn btn-primary"
-                  type="button"
-                  disabled={
-                    accountLoading ||
-                    (paymentRequired && entryFee > 0
-                      ? isPaid || (!registrationOpen && !isRegistered) || (!hasSpots && !isRegistered)
-                      : isRegistered || !registrationOpen || !hasSpots)
-                  }
-                  onClick={handleRegisterClick}
-                >
-                  {isPaid
-                    ? "Registered"
-                    : accountLoading
-                    ? "Checking..."
-                    : !registrationOpen
-                    ? "Registration closed"
-                    : !hasSpots
-                    ? "Sold out"
-                    : paymentRequired && entryFee > 0
-                    ? isRegistered
-                      ? "Continue Payment"
-                      : "Register & Pay"
-                    : "Register Free"}
-                </button>
+                {paidEventRequiresApp ? (
+                  <a className="btn btn-primary" href={APPLE_APP_URL} target="_blank" rel="noreferrer">
+                    Get the app
+                  </a>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={accountLoading || isRegistered || !registrationOpen || !hasSpots}
+                    onClick={handleRegisterClick}
+                  >
+                    {isPaid
+                      ? "Registered"
+                      : accountLoading
+                      ? "Checking..."
+                      : !registrationOpen
+                      ? "Registration closed"
+                      : !hasSpots
+                      ? "Sold out"
+                      : "Register Free"}
+                  </button>
+                )}
               </div>
               {actionError ? <p className="event-action-error">{actionError}</p> : null}
               {actionMessage ? <p className="event-action-success">{actionMessage}</p> : null}
-              {!safeGetAuthUser() ? (
+              {paidEventRequiresApp ? (
+                <>
+                  <p className="event-action-note">
+                    Event payments are temporarily disabled on the website. Use the BoxtoBox app to pay and complete registration.
+                  </p>
+                  <div className="event-app-links">
+                    <a href={GOOGLE_PLAY_URL} target="_blank" rel="noreferrer">
+                      <img
+                        src="/images/GetItOnGooglePlay_Badge_Web_color_English.png"
+                        alt="Get it on Google Play"
+                      />
+                    </a>
+                    <a href={APPLE_APP_URL} target="_blank" rel="noreferrer">
+                      <img
+                        src="/images/Download_on_the_App_Store_Badge_US-UK_RGB_wht_092917.svg"
+                        alt="Download on the App Store"
+                      />
+                    </a>
+                  </div>
+                </>
+              ) : !safeGetAuthUser() ? (
                 <p className="event-action-note">Sign in to register for this event.</p>
               ) : null}
             </div>
@@ -465,136 +364,17 @@ export default function EventDetail() {
             <p>{description}</p>
           </div>
         ) : null}
-        {rules ? (
+        {rules.length ? (
           <div className="event-detail-body">
             <h2>Rules</h2>
-            <p>{rules}</p>
+            <ul className="event-detail-list">
+              {rules.map((rule, index) => (
+                <li key={`${index}-${rule}`}>{rule}</li>
+              ))}
+            </ul>
           </div>
         ) : null}
       </div>
-
-      {paymentOpen && (
-        <div
-          className="payment-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Bank transfer"
-          onClick={(event) => {
-            if (event.target.classList.contains("payment-overlay")) {
-              setPaymentOpen(false);
-            }
-          }}
-        >
-          <div className="payment-card">
-            <div className="payment-header">
-              <div>
-                <p className="payment-eyebrow">Bank Transfer</p>
-                <h2>{paymentStep === 1 ? "Confirm your details" : "Virtual account details"}</h2>
-              </div>
-              <button
-                className="payment-close"
-                type="button"
-                aria-label="Close"
-                onClick={() => setPaymentOpen(false)}
-              >
-                x
-              </button>
-            </div>
-
-            <div className="payment-steps">
-              <span className={`payment-step${paymentStep === 1 ? " active" : ""}`}>1</span>
-              <span className={`payment-step${paymentStep === 2 ? " active" : ""}`}>2</span>
-            </div>
-
-            {paymentError ? <div className="payment-error">{paymentError}</div> : null}
-
-            {paymentStep === 1 && (
-              <form className="payment-form" onSubmit={submitBankTransfer}>
-                <label className="payment-field">
-                  First name
-                  <input
-                    name="firstName"
-                    type="text"
-                    value={paymentForm.firstName}
-                    onChange={handlePaymentFieldChange}
-                    required
-                  />
-                </label>
-                <label className="payment-field">
-                  Last name
-                  <input
-                    name="lastName"
-                    type="text"
-                    value={paymentForm.lastName}
-                    onChange={handlePaymentFieldChange}
-                    required
-                  />
-                </label>
-                <label className="payment-field">
-                  Email
-                  <input
-                    name="email"
-                    type="email"
-                    value={paymentForm.email}
-                    onChange={handlePaymentFieldChange}
-                    required
-                  />
-                </label>
-                <label className="payment-field">
-                  Phone number
-                  <input
-                    name="phoneNumber"
-                    type="tel"
-                    value={paymentForm.phoneNumber}
-                    onChange={handlePaymentFieldChange}
-                    required
-                  />
-                </label>
-                <button className="payment-submit" type="submit" disabled={paymentLoading}>
-                  {paymentLoading ? "Creating..." : "Continue"}
-                </button>
-              </form>
-            )}
-
-            {paymentStep === 2 && (
-              <div className="payment-details">
-                <div className="payment-detail-grid">
-                  <div>
-                    <p className="label">Account number</p>
-                    <p>{paymentDetails?.virtual_account_number || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="label">Bank name</p>
-                    <p>WEMA Bank / ALATPay</p>
-                  </div>
-                  <div>
-                    <p className="label">Amount</p>
-                    <p>
-                      {paymentDetails?.currency || event?.currency || "NGN"}{" "}
-                      {paymentDetails?.amount ?? entryFee}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="label">Status</p>
-                    <p>{paymentDetails?.payment_status || "pending"}</p>
-                  </div>
-                </div>
-                {paymentDetails?.message ? (
-                  <p className="payment-note">{paymentDetails.message}</p>
-                ) : null}
-                <button
-                  className="payment-submit"
-                  type="button"
-                  onClick={refreshBankTransfer}
-                  disabled={paymentLoading}
-                >
-                  {paymentLoading ? "Checking..." : "Check payment status"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

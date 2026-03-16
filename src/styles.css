@@ -1238,6 +1238,22 @@ section {
     font-weight: 600;
 }
 
+.event-app-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.event-app-links a {
+    display: inline-flex;
+}
+
+.event-app-links img {
+    height: 46px;
+    width: auto;
+}
+
 .event-detail-actions .btn {
     min-width: 160px;
 }
@@ -1281,6 +1297,16 @@ section {
     margin: 0;
     line-height: 1.6;
     color: var(--muted);
+}
+
+.event-detail-list {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+}
+
+.event-detail-list li + li {
+    margin-top: 8px;
 }
 
 .payment-overlay {
