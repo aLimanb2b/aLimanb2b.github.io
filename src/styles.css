@@ -1299,6 +1299,120 @@ section {
     color: var(--muted);
 }
 
+.event-group-stage-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.event-group-stage-header h2 {
+    margin: 0 0 6px 0;
+}
+
+.event-group-stage-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(35, 141, 77, 0.12);
+    color: #16663a;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.event-group-stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.event-group-card {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.event-group-card-header {
+    padding: 16px 16px 0 16px;
+}
+
+.event-group-card-header h3 {
+    margin: 0;
+    color: var(--text);
+}
+
+.event-group-card-header p {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+}
+
+.event-group-table-wrap {
+    overflow-x: auto;
+    padding: 16px;
+}
+
+.event-group-table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    color: var(--text);
+}
+
+.event-group-table caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.event-group-table th,
+.event-group-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-size: 14px;
+}
+
+.event-group-table thead th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.event-group-table tbody tr:last-child th,
+.event-group-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.event-group-table tbody th[scope="row"] {
+    min-width: 180px;
+}
+
+.event-group-table tbody th small {
+    display: block;
+    margin-top: 2px;
+    color: #16663a;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.event-group-table tbody tr.is-qualified {
+    background: rgba(35, 141, 77, 0.06);
+}
+
 .event-detail-list {
     margin: 0;
     padding-left: 20px;
@@ -1472,6 +1586,11 @@ section {
 
     .event-detail-poster {
         min-height: 280px;
+    }
+
+    .event-group-table-wrap {
+        margin: 0 -4px;
+        padding: 16px 12px;
     }
 }
 

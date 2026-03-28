@@ -77,6 +77,267 @@ function getEventImage(event) {
   );
 }
 
+function getArrayCandidate(source, keys) {
+  for (const key of keys) {
+    if (Array.isArray(source?.[key])) {
+      return source[key];
+    }
+  }
+  return [];
+}
+
+function getStringCandidate(source, keys) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function getNumberCandidate(source, keys) {
+  for (const key of keys) {
+    const value = Number(source?.[key]);
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function getBooleanCandidate(source, keys) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (typeof value === "boolean") {
+      return value;
+    }
+  }
+  return null;
+}
+
+function compareNullableNumbersDescending(left, right) {
+  if (Number.isFinite(left) && Number.isFinite(right)) {
+    return right - left;
+  }
+  if (Number.isFinite(left)) {
+    return -1;
+  }
+  if (Number.isFinite(right)) {
+    return 1;
+  }
+  return 0;
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function getObjectCandidate(source, keys) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (isPlainObject(value)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function getGroupDocumentList(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  const arrayCandidate = getArrayCandidate(payload, [
+    "groups",
+    "results",
+    "data",
+    "group_stage_groups",
+    "groupStageGroups",
+  ]);
+  if (arrayCandidate.length) {
+    return arrayCandidate;
+  }
+
+  const objectCandidate = getObjectCandidate(payload, [
+    "groups",
+    "results",
+    "data",
+    "group_stage_groups",
+    "groupStageGroups",
+  ]);
+  if (objectCandidate) {
+    return Object.entries(objectCandidate).map(([id, value]) =>
+      isPlainObject(value) ? { id, ...value } : { id, value },
+    );
+  }
+
+  return [];
+}
+
+function getGroupRowSource(group) {
+  const directArray = getArrayCandidate(group, [
+    "rows",
+    "standings",
+    "table",
+    "participants",
+    "teams",
+    "members",
+    "entries",
+  ]);
+  if (directArray.length) {
+    return directArray;
+  }
+
+  const nestedObject = getObjectCandidate(group, ["participants", "teams", "members", "entries"]);
+  if (nestedObject) {
+    return Object.entries(nestedObject)
+      .filter(([, value]) => isPlainObject(value))
+      .map(([id, value]) => ({ id, ...value }));
+  }
+
+  return Object.entries(group)
+    .filter(([key, value]) => /^\d+$/.test(key) && isPlainObject(value))
+    .map(([id, value]) => ({ id, ...value }));
+}
+
+function normalizeGroupStageGroups(payload, defaultQualifiers) {
+  const groupSource = getGroupDocumentList(payload);
+
+  return groupSource
+    .map((group, groupIndex) => {
+      const qualifierCount =
+        getNumberCandidate(group, [
+          "qualifiers_per_group",
+          "qualifiersPerGroup",
+          "qualified_count",
+          "qualifiedCount",
+        ]) ?? defaultQualifiers;
+      const rowSource = getGroupRowSource(group);
+
+      const rows = rowSource
+        .map((row, rowIndex) => {
+          const position = getNumberCandidate(row, ["position", "rank", "place", "seed", "order"]);
+          const played = getNumberCandidate(row, [
+            "played",
+            "matches_played",
+            "matchesPlayed",
+            "games_played",
+            "gamesPlayed",
+            "p",
+          ]);
+          const wins = getNumberCandidate(row, ["wins", "won", "w"]);
+          const draws = getNumberCandidate(row, ["draws", "drawn", "d"]);
+          const losses = getNumberCandidate(row, ["losses", "lost", "l"]);
+          const goalsFor = getNumberCandidate(row, [
+            "goals_for",
+            "goalsFor",
+            "goals_scored",
+            "goalsScored",
+            "gf",
+          ]);
+          const goalsAgainst = getNumberCandidate(row, [
+            "goals_against",
+            "goalsAgainst",
+            "goals_conceded",
+            "goalsConceded",
+            "ga",
+          ]);
+          const goalDifference =
+            getNumberCandidate(row, [
+              "goal_difference",
+              "goalDifference",
+              "gd",
+              "goal_diff",
+              "goalDiff",
+            ]) ??
+            (Number.isFinite(goalsFor) && Number.isFinite(goalsAgainst) ? goalsFor - goalsAgainst : null);
+          const points = getNumberCandidate(row, ["points", "pts"]);
+          const name = getStringCandidate(row, [
+            "participant_name",
+            "participantName",
+            "team_name",
+            "teamName",
+            "name",
+            "player_name",
+            "playerName",
+            "display_name",
+            "displayName",
+          ]);
+          const qualified =
+            getBooleanCandidate(row, [
+              "qualified",
+              "is_qualified",
+              "isQualified",
+              "qualified_for_next_stage",
+              "qualifiedForNextStage",
+            ]) ?? false;
+
+          return {
+            id: row?.id || row?.participant_id || row?.participantId || `${groupIndex}-${rowIndex}-${name}`,
+            position,
+            name: name || `Participant ${rowIndex + 1}`,
+            played,
+            wins,
+            draws,
+            losses,
+            goalsFor,
+            goalsAgainst,
+            goalDifference,
+            points,
+            qualified,
+          };
+        })
+        .filter((row) => row.name);
+
+      const hasExplicitPositions = rows.some((row) => Number.isFinite(row.position));
+      const hasStats = rows.some((row) =>
+        [
+          row.played,
+          row.wins,
+          row.draws,
+          row.losses,
+          row.goalsFor,
+          row.goalsAgainst,
+          row.goalDifference,
+          row.points,
+        ].some((value) => Number.isFinite(value)),
+      );
+      const sortedRows = [...rows].sort((left, right) => {
+        if (hasExplicitPositions && Number.isFinite(left.position) && Number.isFinite(right.position)) {
+          return left.position - right.position;
+        }
+
+        return (
+          compareNullableNumbersDescending(left.points, right.points) ||
+          compareNullableNumbersDescending(left.goalDifference, right.goalDifference) ||
+          compareNullableNumbersDescending(left.goalsFor, right.goalsFor) ||
+          compareNullableNumbersDescending(left.wins, right.wins) ||
+          left.name.localeCompare(right.name)
+        );
+      });
+
+      return {
+        id: group?.id || group?.group_id || group?.groupId || `group-${groupIndex + 1}`,
+        name:
+          getStringCandidate(group, ["name", "title", "label", "group_name", "groupName"]) ||
+          `Group ${String.fromCharCode(65 + (groupIndex % 26))}`,
+        qualifierCount,
+        hasStats,
+        rows: sortedRows.map((row, rowIndex) => ({
+          ...row,
+          position: Number.isFinite(row.position) ? row.position : rowIndex + 1,
+          qualified: row.qualified || (Number.isFinite(qualifierCount) ? rowIndex < qualifierCount : false),
+        })),
+      };
+    })
+    .filter((group) => group.rows.length > 0);
+}
+
+function formatGroupStat(value) {
+  return Number.isFinite(value) ? value : "-";
+}
+
 export default function EventDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -87,6 +348,11 @@ export default function EventDetail() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [groupStageState, setGroupStageState] = useState({
+    status: "idle",
+    groups: [],
+    error: "",
+  });
   const safeGetAuthUser = () => {
     try {
       return getAuthUser();
@@ -162,6 +428,46 @@ export default function EventDetail() {
     fetchAccountState(eventId);
   }, [eventId]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchGroupStage(targetId) {
+      if (!targetId || !event?.has_group_stage) {
+        setGroupStageState({ status: "idle", groups: [], error: "" });
+        return;
+      }
+
+      setGroupStageState({ status: "loading", groups: [], error: "" });
+      try {
+        const data = await apiRequest(`/v1.5/event/${encodeURIComponent(targetId)}/group-stage`, {
+          authRequired: false,
+        });
+        if (!isActive) {
+          return;
+        }
+        const groups = normalizeGroupStageGroups(
+          data,
+          Number(event.group_stage_qualifiers_per_group) || null,
+        );
+        setGroupStageState({ status: "loaded", groups, error: "" });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        setGroupStageState({
+          status: "error",
+          groups: [],
+          error: error?.message || "Unable to load group-stage tables right now.",
+        });
+      }
+    }
+
+    fetchGroupStage(eventId);
+    return () => {
+      isActive = false;
+    };
+  }, [event, eventId]);
+
   const detailItems = useMemo(() => {
     if (!event) {
       return [
@@ -201,6 +507,19 @@ export default function EventDetail() {
   const poster = event ? getEventImage(event) : "";
   const description = event ? getDescription(event) : "";
   const rules = event ? getRules(event) : [];
+  const hasGroupStage = Boolean(event?.has_group_stage);
+  const configuredGroupCount = Number(event?.group_stage_number_of_groups);
+  const configuredQualifierCount = Number(event?.group_stage_qualifiers_per_group);
+  const groupStageSummary = [
+    Number.isFinite(configuredGroupCount) && configuredGroupCount > 0
+      ? `${configuredGroupCount} groups`
+      : "",
+    Number.isFinite(configuredQualifierCount) && configuredQualifierCount > 0
+      ? `${configuredQualifierCount} qualifier${configuredQualifierCount === 1 ? "" : "s"} per group`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" . ");
   const entryFee = Number(event?.entry_fee ?? 0);
   const paymentRequired =
     typeof event?.payment_required === "boolean" ? event.payment_required : entryFee > 0;
@@ -372,6 +691,92 @@ export default function EventDetail() {
                 <li key={`${index}-${rule}`}>{rule}</li>
               ))}
             </ul>
+          </div>
+        ) : null}
+        {hasGroupStage ? (
+          <div className="event-detail-body">
+            <div className="event-group-stage-header">
+              <div>
+                <h2>Group Stage</h2>
+                {groupStageSummary ? <p>{groupStageSummary}</p> : null}
+              </div>
+              {event?.group_stage_status ? (
+                <span className="event-group-stage-badge">
+                  {String(event.group_stage_status).replace(/_/g, " ")}
+                </span>
+              ) : null}
+            </div>
+
+            {groupStageState.status === "loading" ? (
+              <p>Loading group-stage tables...</p>
+            ) : null}
+
+            {groupStageState.status === "error" ? (
+              <p>{groupStageState.error}</p>
+            ) : null}
+
+            {groupStageState.status === "loaded" && !groupStageState.groups.length ? (
+              <p>Group-stage tables will appear here once the groups are published.</p>
+            ) : null}
+
+            {groupStageState.groups.length ? (
+              <div className="event-group-stage-grid">
+                {groupStageState.groups.map((group) => (
+                  <section className="event-group-card" key={group.id} aria-labelledby={`group-${group.id}`}>
+                    <div className="event-group-card-header">
+                      <div>
+                        <h3 id={`group-${group.id}`}>{group.name}</h3>
+                        {Number.isFinite(group.qualifierCount) && group.qualifierCount > 0 ? (
+                          <p>
+                            Top {group.qualifierCount} advance
+                            {group.qualifierCount === 1 ? "s" : ""}
+                          </p>
+                        ) : null}
+                        {!group.hasStats ? <p>Participants assigned. Standings update after results are recorded.</p> : null}
+                      </div>
+                    </div>
+
+                    <div className="event-group-table-wrap" tabIndex="0">
+                      <table className="event-group-table">
+                        <caption>{group.name} group table</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Participant</th>
+                            <th scope="col">P</th>
+                            <th scope="col">W</th>
+                            <th scope="col">D</th>
+                            <th scope="col">L</th>
+                            <th scope="col">GF</th>
+                            <th scope="col">GA</th>
+                            <th scope="col">GD</th>
+                            <th scope="col">Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.rows.map((row) => (
+                            <tr key={row.id} className={row.qualified ? "is-qualified" : ""}>
+                              <td>{row.position}</td>
+                              <th scope="row">
+                                <span>{row.name}</span>
+                              </th>
+                              <td>{formatGroupStat(row.played)}</td>
+                              <td>{formatGroupStat(row.wins)}</td>
+                              <td>{formatGroupStat(row.draws)}</td>
+                              <td>{formatGroupStat(row.losses)}</td>
+                              <td>{formatGroupStat(row.goalsFor)}</td>
+                              <td>{formatGroupStat(row.goalsAgainst)}</td>
+                              <td>{formatGroupStat(row.goalDifference)}</td>
+                              <td>{formatGroupStat(row.points)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
