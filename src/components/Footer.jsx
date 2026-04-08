@@ -17,6 +17,14 @@ export default function Footer() {
       </div>
 
       <div className="legal-links">
+        <NavLink to="/sessions" className="hover-highlight">
+          Sessions
+        </NavLink>
+        <span>|</span>
+        <NavLink to="/events" className="hover-highlight">
+          Events
+        </NavLink>
+        <span>|</span>
         <NavLink to="/privacy" className="hover-highlight">
           Privacy Policy
         </NavLink>

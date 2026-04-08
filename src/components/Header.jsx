@@ -143,6 +143,9 @@ export default function Header() {
           <NavLink to="/events" className="hover-highlight">
             EVENTS
           </NavLink>
+          <NavLink to="/sessions" className="hover-highlight">
+            SESSIONS
+          </NavLink>
           <NavLink to="/support" className="hover-highlight">
             SUPPORT
           </NavLink>
@@ -204,6 +207,9 @@ export default function Header() {
               <>
                 <NavLink to="/events" className="profile-item" role="menuitem">
                   Events
+                </NavLink>
+                <NavLink to="/sessions" className="profile-item" role="menuitem">
+                  Sessions
                 </NavLink>
                 <button
                   className="profile-item profile-action"

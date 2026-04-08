@@ -481,6 +481,29 @@ section {
     margin-bottom: 24px;
 }
 
+.sessions-cta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(13, 84, 62, 0.14);
+    background:
+        linear-gradient(135deg, rgba(216, 255, 232, 0.92) 0%, rgba(241, 255, 247, 0.98) 52%, rgba(255, 255, 255, 0.98) 100%);
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+}
+
+.sessions-cta-bar .btn-primary {
+    background: #0e5f46;
+    box-shadow: 0 10px 24px rgba(14, 95, 70, 0.24);
+}
+
+.sessions-cta-bar .btn-primary:hover {
+    box-shadow: 0 14px 28px rgba(14, 95, 70, 0.32);
+}
+
 .events-cta-text span {
     display: block;
     font-weight: 800;
@@ -1015,6 +1038,428 @@ section {
     text-align: left;
 }
 
+.sessions-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+    gap: 24px;
+    align-items: stretch;
+    background:
+        radial-gradient(circle at top left, rgba(80, 189, 142, 0.18), transparent 42%),
+        linear-gradient(145deg, #ffffff 0%, #ecfff5 58%, #dcf7ea 100%);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow);
+    text-align: left;
+}
+
+.sessions-hero-copy p:last-child {
+    max-width: 680px;
+}
+
+.sessions-hero-stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.sessions-stat-card {
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(13, 84, 62, 0.12);
+    box-shadow: 0 12px 24px rgba(13, 84, 62, 0.08);
+}
+
+.sessions-stat-card span {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #0e5f46;
+    font-weight: 700;
+}
+
+.sessions-stat-card strong {
+    display: block;
+    margin-top: 8px;
+    font-family: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+    font-size: clamp(28px, 5vw, 42px);
+    line-height: 1;
+    color: var(--text);
+}
+
+.sessions-page,
+.session-detail {
+    text-align: left;
+}
+
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 22px;
+    margin-top: 18px;
+}
+
+.session-card {
+    background: #ffffff;
+    border: 1px solid rgba(11, 11, 15, 0.08);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.session-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+}
+
+.session-card-media {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(216, 255, 232, 0.95), rgba(230, 247, 255, 0.92));
+}
+
+.session-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.session-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: 800;
+    color: #0e5f46;
+}
+
+.session-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(152, 33, 41, 0.12);
+    color: #8d1f28;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.session-status-pill.open {
+    background: rgba(27, 127, 58, 0.12);
+    color: #16663a;
+}
+
+.session-card-media .session-status-pill {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.session-status-pill-large {
+    width: fit-content;
+}
+
+.session-card-body {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+}
+
+.session-card-tags {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.session-price-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(27, 127, 58, 0.12);
+    color: #16663a;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.session-price-pill.paid {
+    background: rgba(171, 118, 20, 0.14);
+    color: #9a6100;
+}
+
+.session-price-value {
+    color: var(--text);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.session-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.session-card-head h3 {
+    margin: 0;
+}
+
+.session-card-body p {
+    margin: 0;
+}
+
+.session-card-spots {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eff8f3;
+    color: #0e5f46;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.session-card-meta {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.session-card-meta div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(11, 11, 15, 0.08);
+}
+
+.session-card-meta dt {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.session-card-meta dd {
+    margin: 0;
+    color: var(--text);
+    font-weight: 600;
+    text-align: right;
+}
+
+.session-detail-status-card {
+    display: grid;
+    gap: 10px;
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(11, 11, 15, 0.08);
+    background: linear-gradient(145deg, #ffffff 0%, #f4fff8 100%);
+}
+
+.session-detail-status-card p {
+    margin: 0;
+}
+
+.session-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.session-price-row strong {
+    font-family: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--text);
+}
+
+.session-users-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.session-users-header h2 {
+    margin: 0 0 6px 0;
+}
+
+.session-users-header p {
+    margin: 0;
+}
+
+.session-users-header strong {
+    font-family: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    color: #0e5f46;
+}
+
+.session-users-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.session-user-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+}
+
+.session-user-card h3 {
+    margin: 0 0 4px 0;
+    font-size: 18px;
+}
+
+.session-user-card p {
+    margin: 0;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.session-user-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.session-user-avatar-fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #d7f8e6 0%, #eefdf4 100%);
+    color: #0e5f46;
+    font-weight: 800;
+    font-size: 20px;
+}
+
+.session-users-empty {
+    padding: 20px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px dashed rgba(11, 11, 15, 0.18);
+}
+
+.session-users-empty p {
+    margin: 0;
+}
+
+.session-disclosure {
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.session-disclosure-summary {
+    list-style: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px;
+    cursor: pointer;
+}
+
+.session-disclosure-summary::-webkit-details-marker {
+    display: none;
+}
+
+.session-disclosure-summary h2 {
+    margin: 0 0 6px 0;
+}
+
+.session-disclosure-summary p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.session-disclosure-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+.session-disclosure-meta strong {
+    font-family: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    color: #0e5f46;
+}
+
+.session-disclosure-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(11, 11, 15, 0.12);
+    background: #f7f3ee;
+    color: #0b0b0f;
+    font-size: 24px;
+    line-height: 1;
+    transition: transform 180ms ease;
+}
+
+.session-disclosure[open] .session-disclosure-toggle {
+    transform: rotate(45deg);
+}
+
+.session-disclosure-content {
+    padding: 0 22px 22px 22px;
+    border-top: 1px solid rgba(11, 11, 15, 0.08);
+}
+
+.session-disclosure-content h3 {
+    margin: 18px 0 8px 0;
+}
+
+.session-disclosure-content p + h3 {
+    margin-top: 18px;
+}
+
+.session-disclosure-content ul {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+}
+
+.session-disclosure-content li + li {
+    margin-top: 8px;
+}
+
 .events-gallery-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 280px));
@@ -1289,6 +1734,10 @@ section {
     margin: 0 0 10px 0;
 }
 
+.event-detail-body {
+    padding: 0;
+}
+
 .event-detail-body + .event-detail-body {
     margin-top: 24px;
 }
@@ -1559,6 +2008,12 @@ section {
     padding: 14px;
 }
 
+@media (max-width: 900px) {
+    .sessions-hero {
+        grid-template-columns: 1fr;
+    }
+}
+
 .payment-detail-grid .label {
     margin: 0 0 6px 0;
     font-size: 12px;
@@ -1633,6 +2088,15 @@ section {
         padding: 32px 24px;
     }
 
+    .sessions-cta-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sessions-cta-bar .btn {
+        width: 100%;
+    }
+
     .events-cta-bar {
         flex-direction: column;
         align-items: flex-start;
@@ -1653,6 +2117,21 @@ section {
 
     .event-search-meta {
         display: none;
+    }
+
+    .sessions-hero {
+        padding: 24px;
+    }
+
+    .session-card-head,
+    .session-card-meta div,
+    .session-users-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .session-card-meta dd {
+        text-align: left;
     }
 }
 /* === Coming Soon Page Styles === */

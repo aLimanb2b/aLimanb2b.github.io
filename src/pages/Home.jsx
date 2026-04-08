@@ -52,7 +52,17 @@ export default function Home() {
 
   return (
     <>
-      <div className="events-cta-bar">
+      <div className="sessions-cta-bar">
+        <div className="events-cta-text">
+          <span>Go to Sessions</span>
+          <p>Discover recurring sessions, open training blocks, and host-led meetups.</p>
+        </div>
+        <NavLink className="btn btn-primary" to="/sessions">
+          Browse sessions
+        </NavLink>
+      </div>
+
+      {/* <div className="events-cta-bar">
         <div className="events-cta-text">
           <span>Go to Events</span>
           <p>See upcoming events, tournaments, and community games.</p>
@@ -60,7 +70,24 @@ export default function Home() {
         <NavLink className="btn btn-primary" to="/events">
           Browse events
         </NavLink>
-      </div>
+      </div> */}
+
+      <section className="host-event">
+        <div className="host-event-card">
+          <div className="host-event-copy">
+            <p className="eyebrow">Host an Event</p>
+            <h2>Want to host with BoxtoBox?</h2>
+            <p>
+              If you are interested in hosting and want to learn more, contact us.
+              We offer a variety of host tools that make event organization and
+              monitoring easier than ever.
+            </p>
+          </div>
+          <NavLink className="btn btn-primary" to="/support">
+            Contact us
+          </NavLink>
+        </div>
+      </section>
 
       <section className="hero">
         <div className="hero-inner">
@@ -149,23 +176,6 @@ export default function Home() {
             <h3>Compete</h3>
             <p>Challenge rival squads and climb the rankings across your region.</p>
           </div>
-        </div>
-      </section>
-
-      <section className="host-event">
-        <div className="host-event-card">
-          <div className="host-event-copy">
-            <p className="eyebrow">Host an Event</p>
-            <h2>Want to host with BoxtoBox?</h2>
-            <p>
-              If you are interested in hosting and want to learn more, contact us.
-              We offer a variety of host tools that make event organization and
-              monitoring easier than ever.
-            </p>
-          </div>
-          <NavLink className="btn btn-primary" to="/support">
-            Contact us
-          </NavLink>
         </div>
       </section>
 
