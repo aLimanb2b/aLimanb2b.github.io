@@ -1334,6 +1334,12 @@ section {
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
 }
 
+.session-user-copy {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+}
+
 .session-user-card h3 {
     margin: 0 0 4px 0;
     font-size: 18px;
@@ -1343,6 +1349,38 @@ section {
     margin: 0;
     font-size: 13px;
     word-break: break-all;
+}
+
+.session-user-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.session-user-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(14, 95, 70, 0.12);
+    color: #0e5f46;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.session-user-status.reserved {
+    background: rgba(191, 113, 0, 0.14);
+    color: #8a5200;
+}
+
+.session-user-action {
+    min-width: 108px;
+    padding: 10px 14px;
 }
 
 .session-user-avatar {
@@ -1458,6 +1496,17 @@ section {
 
 .session-disclosure-content li + li {
     margin-top: 8px;
+}
+
+.host-reserve-form {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.host-reserve-list {
+    display: grid;
+    gap: 12px;
 }
 
 .events-gallery-grid {

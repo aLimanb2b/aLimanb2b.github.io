@@ -15,9 +15,14 @@ import {
   isPaidSession,
 } from "../lib/sessions.js";
 
-function RegisteredUserCard({ user }) {
+function getReservationLabel(user) {
+  return String(user?.registration_status || "").toLowerCase() === "reserved" ? "Reserved" : "Registered";
+}
+
+function RegisteredUserCard({ user, actionLabel = "", onAction = null, actionDisabled = false }) {
   const name = user.name || "Registered user";
   const initial = name.trim() ? name.trim()[0].toUpperCase() : "U";
+  const isReserved = String(user?.registration_status || "").toLowerCase() === "reserved";
 
   return (
     <li className="session-user-card">
@@ -26,9 +31,24 @@ function RegisteredUserCard({ user }) {
       ) : (
         <div className="session-user-avatar session-user-avatar-fallback">{initial}</div>
       )}
-      <div>
+      <div className="session-user-copy">
         <h3>{name}</h3>
         <p>{user.id}</p>
+        <div className="session-user-meta">
+          <span className={`session-user-status${isReserved ? " reserved" : ""}`}>
+            {getReservationLabel(user)}
+          </span>
+          {onAction ? (
+            <button
+              className="btn btn-secondary session-user-action"
+              type="button"
+              disabled={actionDisabled}
+              onClick={onAction}
+            >
+              {actionLabel}
+            </button>
+          ) : null}
+        </div>
       </div>
     </li>
   );
@@ -53,6 +73,52 @@ export default function SessionDetail() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [hostActionLoading, setHostActionLoading] = useState(false);
+  const [hostActionError, setHostActionError] = useState("");
+  const [hostActionMessage, setHostActionMessage] = useState("");
+  const [hostTargetAccountId, setHostTargetAccountId] = useState("");
+  const [hostTargetEmail, setHostTargetEmail] = useState("");
+
+  async function loadSession(targetId) {
+    if (!targetId) {
+      setSession(null);
+      setStatus("Session not found.");
+      return null;
+    }
+    setStatus("Loading session...");
+    try {
+      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, { authRequired: false });
+      setSession(data);
+      setStatus("");
+      return data;
+    } catch (error) {
+      setSession(null);
+      setStatus(error?.message || "Unable to load session right now.");
+      return null;
+    }
+  }
+
+  async function fetchAccountState(targetId, explicitAccountId) {
+    const accountId = explicitAccountId || authUser?.uid || "";
+    if (!accountId || !targetId) {
+      setAccountState(null);
+      return null;
+    }
+
+    setAccountLoading(true);
+    try {
+      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/account_states`, {
+        query: { account_id: accountId },
+      });
+      setAccountState(data || null);
+      return data || null;
+    } catch (error) {
+      setAccountState(null);
+      return null;
+    } finally {
+      setAccountLoading(false);
+    }
+  }
 
   useEffect(() => {
     let unsubscribe = null;
@@ -61,13 +127,14 @@ export default function SessionDetail() {
         setAuthUser(user || null);
         if (id && user?.uid) {
           fetchAccountState(id, user.uid);
-          return;
+        } else {
+          setAccountState(null);
         }
-        setAccountState(null);
       });
     } catch (error) {
       // noop
     }
+
     return () => {
       if (typeof unsubscribe === "function") {
         unsubscribe();
@@ -76,61 +143,22 @@ export default function SessionDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (!id) {
-      setSession(null);
-      setStatus("Session not found.");
-      return;
-    }
-
-    let isActive = true;
-
-    async function loadSession(targetId) {
-      setStatus("Loading session...");
-      try {
-        const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, { authRequired: false });
-        if (!isActive) {
-          return null;
-        }
-        setSession(data);
-        setStatus("");
-        return data;
-      } catch (error) {
-        if (!isActive) {
-          return null;
-        }
-        setSession(null);
-        setStatus(error?.message || "Unable to load session right now.");
-        return null;
-      }
-    }
-
     loadSession(id);
-    return () => {
-      isActive = false;
-    };
   }, [id]);
 
   useEffect(() => {
-    if (!id) {
+    if (id && authUser?.uid) {
+      fetchAccountState(id, authUser.uid);
       return;
     }
-    if (!authUser?.uid) {
-      setAccountState(null);
-      return;
-    }
-    fetchAccountState(id, authUser.uid);
+    setAccountState(null);
   }, [authUser?.uid, id]);
 
   useEffect(() => {
     const paystackReturn = searchParams.get("paystack");
     const reference = searchParams.get("reference") || searchParams.get("trxref");
-    if (paystackReturn !== "return" || !reference || !id) {
-      return;
-    }
-
     const accountId = authUser?.uid || "";
-    if (!accountId) {
-      setActionError("Sign in to verify your session payment.");
+    if (paystackReturn !== "return" || !reference || !id || !accountId) {
       return;
     }
 
@@ -174,6 +202,10 @@ export default function SessionDetail() {
   }, [authUser?.uid, id, searchParams, setSearchParams]);
 
   const registeredUsers = useMemo(() => getRegisteredUsers(session), [session]);
+  const reservedUsers = useMemo(
+    () => registeredUsers.filter((user) => String(user?.registration_status || "").toLowerCase() === "reserved"),
+    [registeredUsers],
+  );
   const rules = useMemo(
     () => (Array.isArray(session?.rules) ? session.rules.filter((rule) => String(rule || "").trim()) : []),
     [session],
@@ -184,59 +216,11 @@ export default function SessionDetail() {
   const paymentStatus = String(accountState?.payment_status || "").toLowerCase();
   const isPaid = Boolean(accountState?.paid) || ["paid", "success", "successful", "completed", "complete"].includes(paymentStatus);
   const isRegistered = Boolean(accountState?.register) || isPaid;
+  const isReservedForUser = Boolean(accountState?.reserved_by_host) || String(accountState?.reservation_status || "").toLowerCase() === "reserved";
+  const isHost = Boolean(authUser?.uid) && authUser.uid === session?.host_id;
   const registrationOpen = session?.registration_open !== false;
   const remaining = Number(session?.remaining_places ?? session?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
-
-  if (!session) {
-    return (
-      <section className="session-detail">
-        <div className="event-detail-card">
-          <NavLink className="event-back" to="/sessions">
-            &larr; Back to Sessions
-          </NavLink>
-          <p className="search-status">{status}</p>
-        </div>
-      </section>
-    );
-  }
-
-  async function loadSession(targetId) {
-    if (!targetId) {
-      return null;
-    }
-    setStatus("Loading session...");
-    try {
-      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, { authRequired: false });
-      setSession(data);
-      setStatus("");
-      return data;
-    } catch (error) {
-      setSession(null);
-      setStatus(error?.message || "Unable to load session right now.");
-      return null;
-    }
-  }
-
-  async function fetchAccountState(targetId, explicitAccountId) {
-    const accountId = explicitAccountId || authUser?.uid || "";
-    if (!accountId) {
-      setAccountState(null);
-      return;
-    }
-    setAccountLoading(true);
-    setActionError("");
-    try {
-      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/account_states`, {
-        query: { account_id: accountId },
-      });
-      setAccountState(data || null);
-    } catch (error) {
-      setAccountState(null);
-    } finally {
-      setAccountLoading(false);
-    }
-  }
 
   const openAuthModal = (mode = "signin") => {
     window.dispatchEvent(new CustomEvent("auth:open", { detail: { mode } }));
@@ -253,12 +237,13 @@ export default function SessionDetail() {
     if (!id || !session) {
       return;
     }
+
     const accountId = authUser?.uid || "";
     if (!accountId) {
       openAuthModal("signin");
       return;
     }
-    if ((!registrationOpen || !hasSpots) && !isRegistered) {
+    if ((!registrationOpen || (!hasSpots && !isReservedForUser)) && !isRegistered) {
       return;
     }
 
@@ -268,7 +253,7 @@ export default function SessionDetail() {
         body: { account_id: accountId },
       });
       await Promise.all([loadSession(id), fetchAccountState(id, accountId)]);
-      setActionMessage("You are registered for this session.");
+      setActionMessage(isReservedForUser ? "Your reserved spot is now claimed." : "You are registered for this session.");
     } catch (error) {
       setActionError(error?.message || "Unable to register right now.");
     }
@@ -313,6 +298,78 @@ export default function SessionDetail() {
       setPaymentLoading(false);
     }
   };
+
+  const handleReserveUser = async () => {
+    setHostActionError("");
+    setHostActionMessage("");
+    if (!id || !session || !isHost) {
+      return;
+    }
+
+    const accountId = hostTargetAccountId.trim();
+    const email = hostTargetEmail.trim();
+    if ((accountId && email) || (!accountId && !email)) {
+      setHostActionError("Enter either an account ID or an existing email.");
+      return;
+    }
+
+    try {
+      setHostActionLoading(true);
+      await apiRequest(`/v2/session/${encodeURIComponent(id)}/registration/reserve-user`, {
+        method: "POST",
+        body: {
+          host_id: authUser.uid,
+          ...(accountId ? { account_id: accountId } : { email }),
+        },
+      });
+      await Promise.all([loadSession(id), fetchAccountState(id, authUser.uid)]);
+      setHostTargetAccountId("");
+      setHostTargetEmail("");
+      setHostActionMessage("Reserved spot saved.");
+    } catch (error) {
+      setHostActionError(error?.message || "Unable to reserve a spot right now.");
+    } finally {
+      setHostActionLoading(false);
+    }
+  };
+
+  const handleCancelReservedUser = async (targetAccountId) => {
+    setHostActionError("");
+    setHostActionMessage("");
+    if (!id || !session || !isHost || !targetAccountId) {
+      return;
+    }
+
+    try {
+      setHostActionLoading(true);
+      await apiRequest(`/v2/session/${encodeURIComponent(id)}/registration/cancel-reserved-user`, {
+        method: "POST",
+        body: {
+          host_id: authUser.uid,
+          account_id: targetAccountId,
+        },
+      });
+      await Promise.all([loadSession(id), fetchAccountState(id, authUser.uid)]);
+      setHostActionMessage("Reserved spot cancelled.");
+    } catch (error) {
+      setHostActionError(error?.message || "Unable to cancel the reserved spot right now.");
+    } finally {
+      setHostActionLoading(false);
+    }
+  };
+
+  if (!session) {
+    return (
+      <section className="session-detail">
+        <div className="event-detail-card">
+          <NavLink className="event-back" to="/sessions">
+            &larr; Back to Sessions
+          </NavLink>
+          <p className="search-status">{status}</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="session-detail">
@@ -368,7 +425,7 @@ export default function SessionDetail() {
                   <button
                     className="btn btn-primary"
                     type="button"
-                    disabled={paymentLoading || isPaid || !registrationOpen || !hasSpots}
+                    disabled={paymentLoading || isPaid || !registrationOpen || (!hasSpots && !isReservedForUser)}
                     onClick={handlePayClick}
                   >
                     {isPaid
@@ -377,15 +434,17 @@ export default function SessionDetail() {
                       ? "Processing..."
                       : !registrationOpen
                       ? "Registration closed"
-                      : !hasSpots
+                      : !hasSpots && !isReservedForUser
                       ? "Sold out"
+                      : isReservedForUser
+                      ? "Pay & claim reserved spot"
                       : "Pay with Paystack"}
                   </button>
                 ) : (
                   <button
                     className="btn btn-primary"
                     type="button"
-                    disabled={accountLoading || isRegistered || !registrationOpen || !hasSpots}
+                    disabled={accountLoading || isRegistered || !registrationOpen || (!hasSpots && !isReservedForUser)}
                     onClick={handleRegisterClick}
                   >
                     {isRegistered
@@ -394,8 +453,10 @@ export default function SessionDetail() {
                       ? "Checking..."
                       : !registrationOpen
                       ? "Registration closed"
-                      : !hasSpots
+                      : !hasSpots && !isReservedForUser
                       ? "Sold out"
+                      : isReservedForUser
+                      ? "Claim reserved spot"
                       : "Register Free"}
                   </button>
                 )}
@@ -406,12 +467,78 @@ export default function SessionDetail() {
                 <p className="event-action-note">
                   Sign in to {paid ? "pay for" : "register for"} this session.
                 </p>
+              ) : isReservedForUser ? (
+                <p className="event-action-note">
+                  This session host has reserved a spot for your account. Complete the claim flow to secure it.
+                </p>
               ) : paid && !isPaid ? (
                 <p className="event-action-note">
                   Payments are processed securely with Paystack. You will return here automatically after checkout.
                 </p>
               ) : null}
             </div>
+
+            {isHost ? (
+              <div className="event-detail-actions">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Reserve a user spot</p>
+                    <p className="event-action-subtitle">Use an existing account ID or email. Enter only one.</p>
+                  </div>
+                </div>
+                <div className="host-reserve-form">
+                  <label className="payment-field">
+                    Account ID
+                    <input
+                      type="text"
+                      value={hostTargetAccountId}
+                      placeholder="user-123"
+                      onChange={(event) => setHostTargetAccountId(event.target.value)}
+                    />
+                  </label>
+                  <label className="payment-field">
+                    Existing Email
+                    <input
+                      type="email"
+                      value={hostTargetEmail}
+                      placeholder="player@example.com"
+                      onChange={(event) => setHostTargetEmail(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="event-action-row">
+                  <p className="event-action-note">
+                    Named reservations immediately occupy a session spot and show publicly as reserved until claimed.
+                  </p>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={hostActionLoading}
+                    onClick={handleReserveUser}
+                  >
+                    {hostActionLoading ? "Saving..." : "Reserve spot"}
+                  </button>
+                </div>
+                {hostActionError ? <p className="event-action-error">{hostActionError}</p> : null}
+                {hostActionMessage ? <p className="event-action-success">{hostActionMessage}</p> : null}
+                {reservedUsers.length ? (
+                  <div className="host-reserve-list">
+                    <p className="event-action-title">Reserved users</p>
+                    <ul className="session-users-grid">
+                      {reservedUsers.map((user) => (
+                        <RegisteredUserCard
+                          key={user.id}
+                          user={user}
+                          actionLabel="Cancel"
+                          actionDisabled={hostActionLoading}
+                          onAction={() => handleCancelReservedUser(user.id)}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="event-detail-grid">
               <div className="event-detail-item">
@@ -477,6 +604,7 @@ export default function SessionDetail() {
                 <p>See who is currently signed up.</p>
               </div>
               <div className="session-disclosure-meta">
+                <strong>{session.going ?? registeredUsers.length}</strong>
                 <span className="session-disclosure-toggle" aria-hidden="true">+</span>
               </div>
             </summary>

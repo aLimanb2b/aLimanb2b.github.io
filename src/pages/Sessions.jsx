@@ -7,7 +7,6 @@ import {
   formatSessionDuration,
   formatSessionLocation,
   formatSessionPrice,
-  getRegisteredUsers,
   getSessionImage,
   getSessionPricingLabel,
   getSessionSummary,
@@ -17,7 +16,6 @@ import {
 function SessionCard({ session }) {
   const imageUrl = getSessionImage(session);
   const summary = getSessionSummary(session);
-  const registeredUsers = getRegisteredUsers(session);
   const label = (session.title || "Session").trim();
   const paid = isPaidSession(session);
 
@@ -67,7 +65,7 @@ function SessionCard({ session }) {
           </div>
           <div>
             <dt>{paid ? "Price" : "Registered"}</dt>
-            <dd>{paid ? formatSessionPrice(session) : `${registeredUsers.length || session.going || 0} users`}</dd>
+            <dd>{paid ? formatSessionPrice(session) : `${session.going || 0} users`}</dd>
           </div>
         </dl>
       </div>
