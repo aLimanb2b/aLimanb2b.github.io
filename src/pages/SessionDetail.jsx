@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api.js";
 import { getAuthUser, observeAuthState } from "../lib/auth.js";
@@ -55,6 +55,14 @@ function RegisteredUserCard({ user, actionLabel = "", onAction = null, actionDis
 }
 
 export default function SessionDetail() {
+  function parseDateValue(value) {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   function safeGetAuthUser() {
     try {
       return getAuthUser();
@@ -76,8 +84,13 @@ export default function SessionDetail() {
   const [hostActionLoading, setHostActionLoading] = useState(false);
   const [hostActionError, setHostActionError] = useState("");
   const [hostActionMessage, setHostActionMessage] = useState("");
+  const [hostReconcileLoading, setHostReconcileLoading] = useState(false);
+  const [hostReconcileError, setHostReconcileError] = useState("");
+  const [hostReconcileMessage, setHostReconcileMessage] = useState("");
+  const [hostReconcileSummary, setHostReconcileSummary] = useState(null);
   const [hostTargetAccountId, setHostTargetAccountId] = useState("");
   const [hostTargetEmail, setHostTargetEmail] = useState("");
+  const autoVerifyKeyRef = useRef("");
 
   async function loadSession(targetId) {
     if (!targetId) {
@@ -187,6 +200,12 @@ export default function SessionDetail() {
         if (!isActive) {
           return;
         }
+        if (error?.status === 409 && error?.payload && typeof error.payload === "object") {
+          await Promise.all([loadSession(id), fetchAccountState(id, accountId)]);
+          setActionMessage(error.payload.message || "Payment confirmed, but registration still needs attention.");
+          setSearchParams({}, { replace: true });
+          return;
+        }
         setActionError(error?.message || "Unable to verify your payment right now.");
       } finally {
         if (isActive) {
@@ -215,12 +234,102 @@ export default function SessionDetail() {
   const paid = isPaidSession(session || {});
   const paymentStatus = String(accountState?.payment_status || "").toLowerCase();
   const isPaid = Boolean(accountState?.paid) || ["paid", "success", "successful", "completed", "complete"].includes(paymentStatus);
-  const isRegistered = Boolean(accountState?.register) || isPaid;
+  const isRegistered = Boolean(accountState?.register);
   const isReservedForUser = Boolean(accountState?.reserved_by_host) || String(accountState?.reservation_status || "").toLowerCase() === "reserved";
   const isHost = Boolean(authUser?.uid) && authUser.uid === session?.host_id;
   const registrationOpen = session?.registration_open !== false;
   const remaining = Number(session?.remaining_places ?? session?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
+  const hasPendingPayment = paid && !isPaid && !isRegistered &&
+    ["pending", "processing", "initiated", "otp_sent"].includes(paymentStatus);
+  const registrationDeadline = parseDateValue(accountState?.registration_deadline || session?.registration_deadline);
+  const deadlineHasPassed = Boolean(registrationDeadline && registrationDeadline.getTime() < Date.now());
+  const sessionEligibleForAutoVerify = Boolean(
+    registrationOpen &&
+    !deadlineHasPassed &&
+    session?.session_status !== "completed" &&
+    hasSpots,
+  );
+
+  useEffect(() => {
+    const paystackReturn = searchParams.get("paystack");
+    const accountId = authUser?.uid || "";
+    const reference = String(accountState?.payment_reference || "").trim();
+    if (!id || !accountId || !hasPendingPayment || !reference) {
+      autoVerifyKeyRef.current = "";
+      return;
+    }
+    if (!sessionEligibleForAutoVerify) {
+      autoVerifyKeyRef.current = "";
+      return;
+    }
+    if (paystackReturn === "return") {
+      return;
+    }
+
+    const nextKey = `${id}:${reference}`;
+    if (autoVerifyKeyRef.current === nextKey) {
+      return;
+    }
+    autoVerifyKeyRef.current = nextKey;
+
+    let isActive = true;
+
+    async function verifyPendingPaymentOnLoad() {
+      setPaymentLoading(true);
+      setActionError("");
+      setActionMessage("Confirming your payment...");
+      try {
+        const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
+          method: "POST",
+          body: {
+            reference,
+            payment_date: accountState?.payment_transaction_date || "",
+            transaction_id: accountState?.payment_transaction_id || "",
+          },
+        });
+        if (!isActive) {
+          return;
+        }
+        await Promise.all([loadSession(id), fetchAccountState(id, accountId)]);
+        if (result?.registered) {
+          setActionMessage("Payment confirmed and your session spot is secured.");
+          autoVerifyKeyRef.current = "";
+          return;
+        }
+        setActionMessage(result?.message || "Your payment is still being confirmed. Reload this page in a moment if your registration has not updated yet.");
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        if (error?.status === 409 && error?.payload && typeof error.payload === "object") {
+          await Promise.all([loadSession(id), fetchAccountState(id, accountId)]);
+          setActionMessage(error.payload.message || "Payment confirmed, but registration could not be completed.");
+          autoVerifyKeyRef.current = "";
+          return;
+        }
+        setActionMessage("Your payment is still being confirmed. Reload this page in a moment if your registration has not updated yet.");
+      } finally {
+        if (isActive) {
+          setPaymentLoading(false);
+        }
+      }
+    }
+
+    verifyPendingPaymentOnLoad();
+    return () => {
+      isActive = false;
+    };
+  }, [
+    accountState?.payment_reference,
+    accountState?.payment_transaction_date,
+    accountState?.payment_transaction_id,
+    authUser?.uid,
+    hasPendingPayment,
+    id,
+    searchParams,
+    sessionEligibleForAutoVerify,
+  ]);
 
   const openAuthModal = (mode = "signin") => {
     window.dispatchEvent(new CustomEvent("auth:open", { detail: { mode } }));
@@ -358,6 +467,30 @@ export default function SessionDetail() {
     }
   };
 
+  const handleReconcilePayments = async () => {
+    setHostReconcileError("");
+    setHostReconcileMessage("");
+    setHostReconcileSummary(null);
+    if (!id || !session || !isHost) {
+      return;
+    }
+
+    try {
+      setHostReconcileLoading(true);
+      const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/reconcile`, {
+        method: "POST",
+        body: { host_id: authUser.uid },
+      });
+      await Promise.all([loadSession(id), fetchAccountState(id, authUser.uid)]);
+      setHostReconcileSummary(result || null);
+      setHostReconcileMessage("Session payments reconciled.");
+    } catch (error) {
+      setHostReconcileError(error?.message || "Unable to reconcile session payments right now.");
+    } finally {
+      setHostReconcileLoading(false);
+    }
+  };
+
   if (!session) {
     return (
       <section className="session-detail">
@@ -425,13 +558,15 @@ export default function SessionDetail() {
                   <button
                     className="btn btn-primary"
                     type="button"
-                    disabled={paymentLoading || isPaid || !registrationOpen || (!hasSpots && !isReservedForUser)}
+                    disabled={paymentLoading || isPaid || hasPendingPayment || !registrationOpen || (!hasSpots && !isReservedForUser)}
                     onClick={handlePayClick}
                   >
                     {isPaid
                       ? "Paid"
                       : paymentLoading
                       ? "Processing..."
+                      : hasPendingPayment
+                      ? "Payment being confirmed"
                       : !registrationOpen
                       ? "Registration closed"
                       : !hasSpots && !isReservedForUser
@@ -466,6 +601,14 @@ export default function SessionDetail() {
               {!authUser ? (
                 <p className="event-action-note">
                   Sign in to {paid ? "pay for" : "register for"} this session.
+                </p>
+              ) : paymentLoading && hasPendingPayment ? (
+                <p className="event-action-note session-payment-attention">
+                  Confirming your payment...
+                </p>
+              ) : hasPendingPayment ? (
+                <p className="event-action-note session-payment-attention">
+                  Your payment is still being confirmed. Reload this page in a moment if your registration has not updated yet.
                 </p>
               ) : isReservedForUser ? (
                 <p className="event-action-note">
@@ -536,6 +679,36 @@ export default function SessionDetail() {
                       ))}
                     </ul>
                   </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {isHost ? (
+              <div className="event-detail-actions">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Reconcile session payments</p>
+                    <p className="event-action-subtitle">Fallback tool for pending or incomplete Paystack payments that were not finalized automatically.</p>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={hostReconcileLoading}
+                    onClick={handleReconcilePayments}
+                  >
+                    {hostReconcileLoading ? "Reconciling..." : "Reconcile payments"}
+                  </button>
+                </div>
+                {hostReconcileError ? <p className="event-action-error">{hostReconcileError}</p> : null}
+                {hostReconcileMessage ? <p className="event-action-success">{hostReconcileMessage}</p> : null}
+                {hostReconcileSummary ? (
+                  <ul className="session-reconcile-summary">
+                    <li>Paid and registered: {hostReconcileSummary.paid_and_registered ?? 0}</li>
+                    <li>Still pending: {hostReconcileSummary.still_pending ?? 0}</li>
+                    <li>Failed: {hostReconcileSummary.failed ?? 0}</li>
+                    <li>Skipped: {hostReconcileSummary.skipped ?? 0}</li>
+                    <li>Errors: {hostReconcileSummary.errors ?? 0}</li>
+                  </ul>
                 ) : null}
               </div>
             ) : null}
