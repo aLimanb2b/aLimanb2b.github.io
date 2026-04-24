@@ -2239,3 +2239,120 @@ section {
       padding: 20px;
     }
   }
+
+.checkin-pass-section {
+    padding-top: 48px;
+}
+
+.checkin-pass-shell {
+    display: grid;
+    gap: 28px;
+}
+
+.checkin-pass-intro {
+    max-width: 760px;
+}
+
+.checkin-pass-card {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 28px;
+    padding: 28px;
+    align-items: center;
+}
+
+.checkin-pass-qr-panel {
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+}
+
+.checkin-pass-qr-frame {
+    width: min(100%, 360px);
+    aspect-ratio: 1;
+    border-radius: 28px;
+    background:
+        linear-gradient(145deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.01)),
+        #ffffff;
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.checkin-pass-qr-canvas {
+    display: grid;
+    place-items: center;
+}
+
+.checkin-pass-qr-canvas img {
+    width: min(100%, 280px);
+    height: auto;
+}
+
+.checkin-pass-qr-fallback {
+    display: grid;
+    gap: 10px;
+    text-align: center;
+    color: var(--muted);
+}
+
+.checkin-pass-expiry {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.checkin-pass-meta {
+    display: grid;
+    gap: 18px;
+}
+
+.checkin-pass-token-card,
+.checkin-pass-note {
+    background: var(--surface);
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    padding: 18px;
+}
+
+.checkin-pass-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+.checkin-pass-token {
+    display: block;
+    word-break: break-word;
+    font-family: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+    font-size: clamp(20px, 4vw, 32px);
+    line-height: 1.2;
+    color: var(--text);
+}
+
+.checkin-pass-note p {
+    margin-bottom: 0;
+}
+
+.checkin-pass-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 720px) {
+    .checkin-pass-card {
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+
+    .checkin-pass-qr-frame {
+        width: 100%;
+    }
+}

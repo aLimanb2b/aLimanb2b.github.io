@@ -636,7 +636,7 @@ export default function EventDetail() {
                     disabled={accountLoading || isRegistered || !registrationOpen || !hasSpots}
                     onClick={handleRegisterClick}
                   >
-                    {isPaid
+                    {isRegistered
                       ? "Registered"
                       : accountLoading
                       ? "Checking..."

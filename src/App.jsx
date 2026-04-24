@@ -5,6 +5,7 @@ import Home from "./pages/Home.jsx";
 import Events from "./pages/Events.jsx";
 import EventsAll from "./pages/EventsAll.jsx";
 import EventDetail from "./pages/EventDetail.jsx";
+import CheckInPass from "./pages/CheckInPass.jsx";
 import Sessions from "./pages/Sessions.jsx";
 import SessionDetail from "./pages/SessionDetail.jsx";
 import Support from "./pages/Support.jsx";
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/events-all" element={<EventsAll />} />
           <Route path="/event/:id" element={<EventDetail />} />
+          <Route path="/event/:id/check-in" element={<CheckInPass />} />
           <Route path="/event" element={<EventDetail />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/session/:id" element={<SessionDetail />} />
