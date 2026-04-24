@@ -1,11 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api.js";
 import { getAuthUser, observeAuthState } from "../lib/auth.js";
 
 const API_BASE = "https://us-central1-boxtobox-fa0e1.cloudfunctions.net/api";
-const APPLE_APP_URL = "https://apps.apple.com/gb/app/boxtobox/id6756844810";
-const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=me.boxtobox.boxtobox&pli=1";
+const EVENT_WAIVER_TEXT = `ASSUMPTION OF RISK
+I voluntarily participate in this event and acknowledge that participating in sports involves inherent risks, including the possibility of injury. I knowingly and freely assume all such risks.
+
+INDEMNITY
+To the fullest extent permitted by the applicable laws of the Federal Republic of Nigeria, I agree to waive, release, and discharge the event organizer, sponsors, venue owners, referees, officials, employees, volunteers, and agents (herein referred to as "Released Parties") indemnifying them from any claims or liabilities arising from my participation, including personal injury or property damage.
+
+MEDICAL FITNESS & EMERGENCY CARE
+I confirm that I am medically fit to play and have not been advised otherwise by a medical professional. In case of injury or illness, I authorize the Organizer to obtain emergency medical treatment for me if necessary, and I agree to bear all related medical costs.
+
+CONDUCT & SAFETY
+I agree to follow all event rules, referee decisions, and safety instructions. I understand that misconduct may result in removal from the match without refund or liability to the Organizer.
+
+RECORDING & MEDIA CONSENT
+I agree to photography, video, audio recording of the event. I grant the Event Organizer the right to use my image, likeness, name, and performance for Social media promotion, marketing, broadcasting, and archival purposes, without compensation, in accordance with the applicable laws.
+
+ACKNOWLEDGMENT & SIGNATURE
+By registering for this event, I confirm that I have read, understood, and voluntarily agreed to this waiver and understand that I am consenting to these terms.`;
 
 function formatDate(value) {
   if (!value) {
@@ -47,6 +62,10 @@ function getDescription(event) {
   return event.description || event.details || event.overview || event.notes || "";
 }
 
+function getFormat(event) {
+  return getStringCandidate(event, ["format"]);
+}
+
 function getRules(event) {
   const source = event.rules ?? event.rulebook ?? event.rules_text ?? [];
 
@@ -62,6 +81,40 @@ function getRules(event) {
   }
 
   return [];
+}
+
+function renderTextWithBreaks(text) {
+  const sections = String(text || "")
+    .split(/(?:\r?\n|\/n)/)
+    .map((section) => section.trim())
+    .filter(Boolean);
+
+  return sections.map((section, index) => (
+    <Fragment key={`${index}-${section}`}>
+      {index > 0 ? (
+        <>
+          <br />
+          <br />
+        </>
+      ) : null}
+      {section}
+    </Fragment>
+  ));
+}
+
+function getWaiverSections(text) {
+  return String(text || "")
+    .split(/\n\s*\n/)
+    .map((section) => section.trim())
+    .filter(Boolean)
+    .map((section) => {
+      const [title, ...bodyLines] = section.split("\n");
+      return {
+        title: String(title || "").trim(),
+        body: bodyLines.join(" ").trim(),
+      };
+    })
+    .filter((section) => section.title && section.body);
 }
 
 function getEventImage(event) {
@@ -340,12 +393,20 @@ function formatGroupStat(value) {
 
 export default function EventDetail() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const eventId = id || searchParams.get("id");
   const [event, setEvent] = useState(null);
   const [status, setStatus] = useState({ title: "Loading...", summary: "" });
+  const [authUser, setAuthUser] = useState(() => {
+    try {
+      return getAuthUser();
+    } catch (error) {
+      return null;
+    }
+  });
   const [accountState, setAccountState] = useState(null);
   const [accountLoading, setAccountLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [groupStageState, setGroupStageState] = useState({
@@ -353,6 +414,7 @@ export default function EventDetail() {
     groups: [],
     error: "",
   });
+  const autoVerifyKeyRef = useRef("");
   const safeGetAuthUser = () => {
     try {
       return getAuthUser();
@@ -364,10 +426,8 @@ export default function EventDetail() {
   useEffect(() => {
     let unsubscribe = null;
     try {
-      unsubscribe = observeAuthState(() => {
-        if (eventId) {
-          fetchAccountState(eventId);
-        }
+      unsubscribe = observeAuthState((user) => {
+        setAuthUser(user || null);
       });
     } catch (error) {
       // noop
@@ -421,12 +481,12 @@ export default function EventDetail() {
     if (!eventId) {
       return;
     }
-    if (!safeGetAuthUser()) {
+    if (!authUser?.uid) {
       setAccountState(null);
       return;
     }
-    fetchAccountState(eventId);
-  }, [eventId]);
+    fetchAccountState(eventId, authUser.uid);
+  }, [authUser?.uid, eventId]);
 
   useEffect(() => {
     let isActive = true;
@@ -506,7 +566,9 @@ export default function EventDetail() {
 
   const poster = event ? getEventImage(event) : "";
   const description = event ? getDescription(event) : "";
+  const format = event ? getFormat(event) : "";
   const rules = event ? getRules(event) : [];
+  const waiverSections = useMemo(() => getWaiverSections(EVENT_WAIVER_TEXT), []);
   const hasGroupStage = Boolean(event?.has_group_stage);
   const configuredGroupCount = Number(event?.group_stage_number_of_groups);
   const configuredQualifierCount = Number(event?.group_stage_qualifiers_per_group);
@@ -528,14 +590,19 @@ export default function EventDetail() {
     Boolean(accountState?.paid) ||
     ["paid", "success", "successful", "completed", "complete", "approved", "succeeded"].includes(paymentStatus);
   const isRegistered = Boolean(accountState?.register) || isPaid;
+  const hasPendingPayment =
+    paymentRequired &&
+    !isPaid &&
+    !isRegistered &&
+    ["pending", "processing", "initiated", "otp_sent"].includes(paymentStatus);
   const registrationOpen = event?.registration_open !== false;
   const remaining = Number(event?.remaining_places ?? event?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
-  const paidEventRequiresApp = paymentRequired && entryFee > 0 && !isPaid;
 
-  async function fetchAccountState(targetId) {
-    const accountId = safeGetAuthUser()?.uid || "";
+  async function fetchAccountState(targetId, explicitAccountId) {
+    const accountId = explicitAccountId || safeGetAuthUser()?.uid || "";
     if (!accountId) {
+      setAccountState(null);
       return;
     }
     setAccountLoading(true);
@@ -552,8 +619,137 @@ export default function EventDetail() {
     }
   }
 
+  useEffect(() => {
+    const paystackReturn = searchParams.get("paystack");
+    const reference = searchParams.get("reference") || searchParams.get("trxref");
+    const accountId = authUser?.uid || "";
+    if (paystackReturn !== "return" || !reference || !eventId || !accountId) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function verifyReturnedPayment() {
+      setPaymentLoading(true);
+      setActionError("");
+      setActionMessage("Verifying payment...");
+      try {
+        const result = await apiRequest(`/v2.5/event/${encodeURIComponent(eventId)}/payment/paystack/verify`, {
+          method: "POST",
+          body: { reference },
+        });
+        if (!isActive) {
+          return;
+        }
+        await fetchAccountState(eventId, accountId);
+        setActionMessage(
+          result?.registered
+            ? "Payment confirmed and your event registration is complete."
+            : result?.message || "Payment confirmed, but registration could not be completed.",
+        );
+        setSearchParams(id ? {} : { id: eventId }, { replace: true });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        if (error?.status === 409 && error?.payload && typeof error.payload === "object") {
+          await fetchAccountState(eventId, accountId);
+          setActionMessage(error.payload.message || "Payment confirmed, but registration still needs attention.");
+          setSearchParams(id ? {} : { id: eventId }, { replace: true });
+          return;
+        }
+        setActionError(error?.message || "Unable to verify your payment right now.");
+      } finally {
+        if (isActive) {
+          setPaymentLoading(false);
+        }
+      }
+    }
+
+    verifyReturnedPayment();
+    return () => {
+      isActive = false;
+    };
+  }, [authUser?.uid, eventId, id, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const paystackReturn = searchParams.get("paystack");
+    const accountId = authUser?.uid || "";
+    const reference = String(accountState?.payment_reference || "").trim();
+    if (!eventId || !accountId || !hasPendingPayment || !reference) {
+      autoVerifyKeyRef.current = "";
+      return;
+    }
+    if (paystackReturn === "return") {
+      return;
+    }
+
+    const nextKey = `${eventId}:${reference}`;
+    if (autoVerifyKeyRef.current === nextKey) {
+      return;
+    }
+    autoVerifyKeyRef.current = nextKey;
+
+    let isActive = true;
+
+    async function verifyPendingPaymentOnLoad() {
+      setPaymentLoading(true);
+      setActionError("");
+      setActionMessage("Confirming your payment...");
+      try {
+        const result = await apiRequest(`/v2.5/event/${encodeURIComponent(eventId)}/payment/paystack/verify`, {
+          method: "POST",
+          body: { reference },
+        });
+        if (!isActive) {
+          return;
+        }
+        await fetchAccountState(eventId, accountId);
+        if (result?.registered) {
+          setActionMessage("Payment confirmed and your event registration is complete.");
+          autoVerifyKeyRef.current = "";
+          return;
+        }
+        setActionMessage(
+          result?.message || "Your payment is still being confirmed. Reload this page in a moment if your registration has not updated yet.",
+        );
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        if (error?.status === 409 && error?.payload && typeof error.payload === "object") {
+          await fetchAccountState(eventId, accountId);
+          setActionMessage(error.payload.message || "Payment confirmed, but registration could not be completed.");
+          autoVerifyKeyRef.current = "";
+          return;
+        }
+        setActionMessage("Your payment is still being confirmed. Reload this page in a moment if your registration has not updated yet.");
+      } finally {
+        if (isActive) {
+          setPaymentLoading(false);
+        }
+      }
+    }
+
+    verifyPendingPaymentOnLoad();
+    return () => {
+      isActive = false;
+    };
+  }, [accountState?.payment_reference, authUser?.uid, eventId, hasPendingPayment, searchParams]);
+
   const openAuthModal = (mode = "signin") => {
     window.dispatchEvent(new CustomEvent("auth:open", { detail: { mode } }));
+  };
+
+  const buildPaystackCallbackUrl = () => {
+    const defaultHashPath = id ? `#/event/${encodeURIComponent(id)}` : `#/event`;
+    const hashPath = (window.location.hash || defaultHashPath).split("?")[0];
+    const callbackParams = new URLSearchParams();
+    if (!id && eventId) {
+      callbackParams.set("id", eventId);
+    }
+    callbackParams.set("paystack", "return");
+    return `${window.location.origin}${window.location.pathname}${hashPath}?${callbackParams.toString()}`;
   };
 
   const handleRegisterClick = async () => {
@@ -562,7 +758,7 @@ export default function EventDetail() {
     if (!eventId || !event) {
       return;
     }
-    const accountId = safeGetAuthUser()?.uid || "";
+    const accountId = authUser?.uid || "";
     if (!accountId) {
       openAuthModal("signin");
       return;
@@ -578,10 +774,49 @@ export default function EventDetail() {
           register: true,
         },
       });
-      await fetchAccountState(eventId);
+      await fetchAccountState(eventId, accountId);
       setActionMessage("You are registered for this event.");
     } catch (error) {
       setActionError(error?.message || "Unable to register right now.");
+    }
+  };
+
+  const handlePayClick = async () => {
+    setActionError("");
+    setActionMessage("");
+    if (!eventId || !event) {
+      return;
+    }
+
+    const user = authUser;
+    const accountId = user?.uid || "";
+    if (!accountId) {
+      openAuthModal("signin");
+      return;
+    }
+    if (!user?.email) {
+      setActionError("A verified email is required before starting payment.");
+      return;
+    }
+
+    try {
+      setPaymentLoading(true);
+      const result = await apiRequest(`/v2.5/event/${encodeURIComponent(eventId)}/payment/paystack/initialize`, {
+        method: "POST",
+        body: {
+          email: user.email,
+          callback_url: buildPaystackCallbackUrl(),
+        },
+      });
+
+      if (!result?.authorization_url) {
+        throw new Error("Unable to start Paystack checkout right now.");
+      }
+
+      window.location.assign(result.authorization_url);
+    } catch (error) {
+      setActionError(error?.message || "Unable to start payment right now.");
+      setPaymentLoading(false);
     }
   };
 
@@ -625,10 +860,25 @@ export default function EventDetail() {
                       : "Free event"}
                   </p>
                 </div>
-                {paidEventRequiresApp ? (
-                  <a className="btn btn-primary" href={APPLE_APP_URL} target="_blank" rel="noreferrer">
-                    Get the app
-                  </a>
+                {paymentRequired && entryFee > 0 ? (
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={paymentLoading || isPaid || hasPendingPayment || !registrationOpen || !hasSpots}
+                    onClick={handlePayClick}
+                  >
+                    {isPaid
+                      ? "Paid"
+                      : paymentLoading
+                      ? "Processing..."
+                      : hasPendingPayment
+                      ? "Payment being confirmed"
+                      : !registrationOpen
+                      ? "Registration closed"
+                      : !hasSpots
+                      ? "Sold out"
+                      : "Pay with Paystack"}
+                  </button>
                 ) : (
                   <button
                     className="btn btn-primary"
@@ -650,37 +900,53 @@ export default function EventDetail() {
               </div>
               {actionError ? <p className="event-action-error">{actionError}</p> : null}
               {actionMessage ? <p className="event-action-success">{actionMessage}</p> : null}
-              {paidEventRequiresApp ? (
-                <>
-                  <p className="event-action-note">
-                    Event payments are temporarily disabled on the website. Use the BoxtoBox app to pay and complete registration.
-                  </p>
-                  <div className="event-app-links">
-                    <a href={GOOGLE_PLAY_URL} target="_blank" rel="noreferrer">
-                      <img
-                        src="/images/GetItOnGooglePlay_Badge_Web_color_English.png"
-                        alt="Get it on Google Play"
-                      />
-                    </a>
-                    <a href={APPLE_APP_URL} target="_blank" rel="noreferrer">
-                      <img
-                        src="/images/Download_on_the_App_Store_Badge_US-UK_RGB_wht_092917.svg"
-                        alt="Download on the App Store"
-                      />
-                    </a>
-                  </div>
-                </>
-              ) : !safeGetAuthUser() ? (
-                <p className="event-action-note">Sign in to register for this event.</p>
+              {!authUser ? (
+                <p className="event-action-note">
+                  Sign in to {paymentRequired && entryFee > 0 ? "pay for" : "register for"} this event.
+                </p>
+              ) : paymentLoading && hasPendingPayment ? (
+                <p className="event-action-note session-payment-attention">
+                  Confirming your payment...
+                </p>
+              ) : hasPendingPayment ? (
+                <p className="event-action-note session-payment-attention">
+                  Your payment is still being confirmed. Reload this page in a moment if your registration has not updated yet.
+                </p>
+              ) : paymentRequired && entryFee > 0 && !isPaid ? (
+                <p className="event-action-note">
+                  Payments are processed securely with Paystack. You will return here automatically after checkout.
+                </p>
               ) : null}
             </div>
           </div>
         </div>
 
+        {waiverSections.length ? (
+          <div className="event-detail-body">
+            <details className="session-disclosure">
+              <summary className="session-disclosure-summary">
+                <div>
+                  <h2>Waiver</h2>
+                  <p>Review the participation waiver and event liability terms.</p>
+                </div>
+                <span className="session-disclosure-toggle" aria-hidden="true">+</span>
+              </summary>
+              <div className="session-disclosure-content">
+                {waiverSections.map((section) => (
+                  <p key={section.title}>
+                    <strong>{section.title}</strong>
+                    <br />
+                    {section.body}
+                  </p>
+                ))}
+              </div>
+            </details>
+          </div>
+        ) : null}
         {description ? (
           <div className="event-detail-body">
             <h2>About</h2>
-            <p>{description}</p>
+            <p>{renderTextWithBreaks(description)}</p>
           </div>
         ) : null}
         {rules.length ? (
@@ -691,6 +957,12 @@ export default function EventDetail() {
                 <li key={`${index}-${rule}`}>{rule}</li>
               ))}
             </ul>
+          </div>
+        ) : null}
+        {format ? (
+          <div className="event-detail-body">
+            <h2>Format</h2>
+            <p>{format}</p>
           </div>
         ) : null}
         {hasGroupStage ? (
