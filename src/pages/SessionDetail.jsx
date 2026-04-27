@@ -184,7 +184,8 @@ export default function SessionDetail() {
       try {
         const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
           method: "POST",
-          body: { reference },
+          authRequired: false,
+          body: { reference, account_id: accountId },
         });
         if (!isActive) {
           return;
@@ -282,8 +283,10 @@ export default function SessionDetail() {
       try {
         const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
           method: "POST",
+          authRequired: false,
           body: {
             reference,
+            account_id: accountId,
             payment_date: accountState?.payment_transaction_date || "",
             transaction_id: accountState?.payment_transaction_id || "",
           },
@@ -390,6 +393,7 @@ export default function SessionDetail() {
       setPaymentLoading(true);
       const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/initialize`, {
         method: "POST",
+        authRequired: false,
         body: {
           account_id: accountId,
           email: user.email,

@@ -636,7 +636,8 @@ export default function EventDetail() {
       try {
         const result = await apiRequest(`/v2.5/event/${encodeURIComponent(eventId)}/payment/paystack/verify`, {
           method: "POST",
-          body: { reference },
+          authRequired: false,
+          body: { reference, account_id: accountId },
         });
         if (!isActive) {
           return;
@@ -699,7 +700,8 @@ export default function EventDetail() {
       try {
         const result = await apiRequest(`/v2.5/event/${encodeURIComponent(eventId)}/payment/paystack/verify`, {
           method: "POST",
-          body: { reference },
+          authRequired: false,
+          body: { reference, account_id: accountId },
         });
         if (!isActive) {
           return;
@@ -803,7 +805,9 @@ export default function EventDetail() {
       setPaymentLoading(true);
       const result = await apiRequest(`/v2.5/event/${encodeURIComponent(eventId)}/payment/paystack/initialize`, {
         method: "POST",
+        authRequired: false,
         body: {
+          account_id: accountId,
           email: user.email,
           callback_url: buildPaystackCallbackUrl(),
         },
