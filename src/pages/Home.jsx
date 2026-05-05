@@ -13,19 +13,8 @@ const SLIDES = [
   {
     src: "/images/ios_screenshots/IPhone%20SC-2.png",
     alt: "BoxtoBox player stats",
-  },
-  {
-    src: "/images/ios_screenshots/IPhone%20SC-3.png",
-    alt: "BoxtoBox events list",
-  },
-  {
-    src: "/images/ios_screenshots/IPhone%20SC-4.png",
-    alt: "BoxtoBox lineup builder",
-  },
-  {
-    src: "/images/ios_screenshots/IPhone%20SC-5.png",
-    alt: "BoxtoBox tournament view",
-  },
+  }
+
 ];
 
 export default function Home() {

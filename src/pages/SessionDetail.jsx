@@ -182,7 +182,7 @@ export default function SessionDetail() {
       setActionError("");
       setActionMessage("Verifying payment...");
       try {
-        const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
+        const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
           method: "POST",
           authRequired: false,
           body: { reference, account_id: accountId },
@@ -281,7 +281,7 @@ export default function SessionDetail() {
       setActionError("");
       setActionMessage("Confirming your payment...");
       try {
-        const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
+        const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/payment/paystack/verify`, {
           method: "POST",
           authRequired: false,
           body: {
@@ -391,7 +391,7 @@ export default function SessionDetail() {
 
     try {
       setPaymentLoading(true);
-      const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/initialize`, {
+      const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/payment/paystack/initialize`, {
         method: "POST",
         authRequired: false,
         body: {
@@ -481,7 +481,7 @@ export default function SessionDetail() {
 
     try {
       setHostReconcileLoading(true);
-      const result = await apiRequest(`/v2/session/${encodeURIComponent(id)}/payment/paystack/reconcile`, {
+      const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/payment/paystack/reconcile`, {
         method: "POST",
         body: { host_id: authUser.uid },
       });

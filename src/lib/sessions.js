@@ -87,6 +87,28 @@ export function getSessionSummary(session) {
   );
 }
 
+export function getSessionSport(session) {
+  const sport =
+    session?.sport_name ||
+    session?.sport_type ||
+    session?.sport?.name ||
+    session?.sport ||
+    session?.activity_name ||
+    session?.activity?.name ||
+    session?.activity ||
+    session?.category_name ||
+    session?.category?.name ||
+    session?.category ||
+    "";
+
+  if (typeof sport !== "string") {
+    return "Sport TBD";
+  }
+
+  const label = sport.trim();
+  return label || "Sport TBD";
+}
+
 export function getRegisteredUsers(session) {
   if (!Array.isArray(session?.registered_users)) {
     return [];

@@ -1,23 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api.js";
 import {
   formatSessionDate,
-  formatSessionDeadline,
   formatSessionDuration,
   formatSessionLocation,
-  formatSessionPrice,
   getSessionImage,
-  getSessionPricingLabel,
-  getSessionSummary,
-  isPaidSession,
+  getSessionSport,
 } from "../lib/sessions.js";
+
+const PAGE_SIZE = 9;
 
 function SessionCard({ session }) {
   const imageUrl = getSessionImage(session);
-  const summary = getSessionSummary(session);
   const label = (session.title || "Session").trim();
-  const paid = isPaidSession(session);
 
   return (
     <NavLink
@@ -35,17 +31,10 @@ function SessionCard({ session }) {
       <div className="session-card-body">
         <div className="session-card-head">
           <h3>{session.title || "Untitled session"}</h3>
-          <span className="session-card-spots">
-            {session.remaining_places ?? 0} spots left
-          </span>
         </div>
         <div className="session-card-tags">
-          <span className={`session-price-pill${paid ? " paid" : ""}`}>
-            {getSessionPricingLabel(session)}
-          </span>
-          <span className="session-price-value">{formatSessionPrice(session)}</span>
+          <span className="session-sport-pill">{getSessionSport(session)}</span>
         </div>
-        {summary ? <p>{summary}</p> : null}
         <dl className="session-card-meta">
           <div>
             <dt>Starts</dt>
@@ -59,14 +48,6 @@ function SessionCard({ session }) {
             <dt>Duration</dt>
             <dd>{formatSessionDuration(session.duration_hours)}</dd>
           </div>
-          <div>
-            <dt>Register by</dt>
-            <dd>{formatSessionDeadline(session.registration_deadline)}</dd>
-          </div>
-          <div>
-            <dt>{paid ? "Price" : "Registered"}</dt>
-            <dd>{paid ? formatSessionPrice(session) : `${session.going || 0} users`}</dd>
-          </div>
         </dl>
       </div>
     </NavLink>
@@ -74,8 +55,18 @@ function SessionCard({ session }) {
 }
 
 export default function Sessions() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sessions, setSessions] = useState([]);
   const [status, setStatus] = useState("Loading sessions...");
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = Number(searchParams.get("page") || 1);
+    return Number.isFinite(page) ? Math.max(1, page) : 1;
+  });
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setSearchParams({ page: String(currentPage) }, { replace: true });
+  }, [currentPage, setSearchParams]);
 
   useEffect(() => {
     let isActive = true;
@@ -83,19 +74,38 @@ export default function Sessions() {
     async function loadSessions() {
       setStatus("Loading sessions...");
       try {
-        const data = await apiRequest("/v2/sessions", { authRequired: false });
+        const data = await apiRequest("/v2/sessions", {
+          authRequired: false,
+          query: {
+            page: currentPage,
+            page_size: PAGE_SIZE,
+          },
+        });
         if (!isActive) {
           return;
         }
         const results = Array.isArray(data?.results) ? data.results : [];
-        setSessions(results);
-        setStatus(results.length ? "" : "No sessions available right now.");
+        const serverTotalPages = Number(data?.total_pages);
+        const hasServerPagination = Number.isFinite(serverTotalPages) && serverTotalPages > 0;
+        const nextPage = Number(data?.page) || currentPage;
+        const nextTotalPages = hasServerPagination
+          ? Math.max(1, serverTotalPages)
+          : Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+        const visibleResults = hasServerPagination
+          ? results
+          : results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+        setSessions(visibleResults);
+        setStatus(visibleResults.length ? "" : "No sessions available right now.");
+        setCurrentPage(nextPage);
+        setTotalPages(nextTotalPages);
       } catch (error) {
         if (!isActive) {
           return;
         }
         setSessions([]);
         setStatus("Unable to load sessions right now.");
+        setTotalPages(1);
       }
     }
 
@@ -103,44 +113,15 @@ export default function Sessions() {
     return () => {
       isActive = false;
     };
-  }, []);
-
-  const metrics = useMemo(() => {
-    const openCount = sessions.filter((session) => session.registration_open).length;
-    const totalSpots = sessions.reduce((sum, session) => {
-      const remaining = Number(session.remaining_places);
-      return sum + (Number.isFinite(remaining) ? remaining : 0);
-    }, 0);
-    return {
-      total: sessions.length,
-      open: openCount,
-      spots: totalSpots,
-    };
-  }, [sessions]);
+  }, [currentPage]);
 
   return (
     <>
       <section className="sessions-hero">
         <div className="sessions-hero-copy">
-          <p className="eyebrow">Boxtobox</p>
+          <p className="eyebrow">Find your next session</p>
           <h1>Sessions</h1>
-          <p>
-            Explore recurring host-led sports sessions.
-          </p>
-        </div>
-        <div className="sessions-hero-stats">
-          <div className="sessions-stat-card">
-            <span>Total sessions</span>
-            <strong>{metrics.total}</strong>
-          </div>
-          <div className="sessions-stat-card">
-            <span>Open right now</span>
-            <strong>{metrics.open}</strong>
-          </div>
-          <div className="sessions-stat-card">
-            <span>Spots remaining</span>
-            <strong>{metrics.spots}</strong>
-          </div>
+          <p>Explore recurring host-led sports sessions near you.</p>
         </div>
       </section>
 
@@ -150,6 +131,25 @@ export default function Sessions() {
           {sessions.map((session) => (
             <SessionCard key={session.id || session.title} session={session} />
           ))}
+        </div>
+        <div className="events-pagination">
+          <button
+            className="pagination-btn"
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage <= 1}
+          >
+            Previous
+          </button>
+          <span className="pagination-info">Page {currentPage} of {totalPages}</span>
+          <button
+            className="pagination-btn"
+            type="button"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            Next
+          </button>
         </div>
       </section>
     </>
