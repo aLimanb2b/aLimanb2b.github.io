@@ -10,6 +10,7 @@ import Sessions from "./pages/Sessions.jsx";
 import SessionDetail from "./pages/SessionDetail.jsx";
 import Support from "./pages/Support.jsx";
 import HostVerification from "./pages/HostVerification.jsx";
+import HostDashboard from "./pages/HostDashboard.jsx";
 import Privacy from "./pages/Privacy.jsx";
 import Terms from "./pages/Terms.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
@@ -19,8 +20,13 @@ export default function App() {
   return (
     <HashRouter>
       <ScrollToTop />
-      <Layout>
-        <Routes>
+      <Routes>
+        <Route path="/host-dashboard" element={<HostDashboard />} />
+        <Route
+          path="/*"
+          element={(
+            <Layout>
+              <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events-all" element={<EventsAll />} />
@@ -35,8 +41,11 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/coming-soon" element={<ComingSoon />} />
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Layout>
+              </Routes>
+            </Layout>
+          )}
+        />
+      </Routes>
     </HashRouter>
   );
 }
