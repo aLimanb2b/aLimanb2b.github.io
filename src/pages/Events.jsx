@@ -1,26 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { CatalogHeader, ContentListShell, EventRow, compareEventsMostRecentFirst } from "../components/CatalogRows.jsx";
 
 const API_BASE = "https://us-central1-boxtobox-fa0e1.cloudfunctions.net/api";
-
-function formatDate(value) {
-  if (!value) {
-    return "TBD";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "TBD";
-  }
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatLocation(event) {
-  return event.address_name || event.city || event.region || "TBA";
-}
 
 export default function Events() {
   const [query, setQuery] = useState("");
@@ -51,7 +33,7 @@ export default function Events() {
         if (requestId !== activeRequest.current) {
           return;
         }
-        const results = Array.isArray(data.results) ? data.results : [];
+        const results = Array.isArray(data.results) ? [...data.results].sort(compareEventsMostRecentFirst) : [];
         setEvents(results);
         setStatus(results.length ? "" : "No events found.");
       } catch (error) {
@@ -66,18 +48,25 @@ export default function Events() {
     return () => window.clearTimeout(timeout);
   }, [query]);
 
+  const trimmedQuery = query.trim();
+  const isEmpty = events.length === 0;
+  const emptyTitle = trimmedQuery ? "No events found" : "Search events";
+  const emptyMessage = trimmedQuery
+    ? "Try a different event title or browse the full catalog."
+    : "Enter an event name to find tournaments, fixtures, and community games.";
+
   return (
     <>
-      <section className="events-hero">
-        <div>
-          <p className="eyebrow">Find your next match</p>
-          <h1>Events</h1>
-          <p>Search upcoming tournaments, pickup games, and community fixtures.</p>
-        </div>
-      </section>
+      <CatalogHeader
+        eyebrow="Find your next match"
+        title="Events"
+        action={<NavLink className="btn btn-secondary" to="/events-all">View all</NavLink>}
+      >
+        <p>Search tournaments, pickup games, and community fixtures hosted on BoxtoBox.</p>
+      </CatalogHeader>
 
-      <section className="events-search">
-        <div className="search-bar">
+      <section className="catalog-page">
+        <div className="catalog-toolbar">
           <input
             type="search"
             value={query}
@@ -89,26 +78,17 @@ export default function Events() {
             View all events
           </NavLink>
         </div>
-        <div className="search-status">{status}</div>
-        <ul className="event-search-list">
+
+        <ContentListShell
+          status={status && !isEmpty ? status : ""}
+          isEmpty={isEmpty}
+          emptyTitle={emptyTitle}
+          emptyMessage={emptyMessage}
+        >
           {events.map((event) => (
-            <li className="event-search-item" key={event.id || event.title}>
-              <NavLink
-                to={`/event/${encodeURIComponent(event.id)}`}
-                aria-label={`View ${event.title || "event"} details`}
-              >
-                <div className="event-search-content">
-                  <h3>{event.title || "Untitled event"}</h3>
-                  <div className="event-search-meta">
-                    <span>{formatDate(event.release_date)}</span>
-                    <span>{formatLocation(event)}</span>
-                  </div>
-                </div>
-                <span className="event-search-chevron">&gt;</span>
-              </NavLink>
-            </li>
+            <EventRow event={event} key={event.id || event.title} />
           ))}
-        </ul>
+        </ContentListShell>
       </section>
     </>
   );

@@ -1,58 +1,9 @@
 import { useEffect, useState } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
+import { CatalogHeader, ContentListShell, SessionRow } from "../components/CatalogRows.jsx";
 import { apiRequest } from "../lib/api.js";
-import {
-  formatSessionDate,
-  formatSessionDuration,
-  formatSessionLocation,
-  getSessionImage,
-  getSessionSport,
-} from "../lib/sessions.js";
 
 const PAGE_SIZE = 9;
-
-function SessionCard({ session }) {
-  const imageUrl = getSessionImage(session);
-  const label = (session.title || "Session").trim();
-
-  return (
-    <NavLink
-      className="session-card"
-      to={`/session/${encodeURIComponent(session.id)}`}
-      aria-label={`View ${session.title || "session"} details`}
-    >
-      <div className="session-card-media">
-        {imageUrl ? (
-          <img src={imageUrl} alt={session.title || "Session image"} loading="lazy" />
-        ) : (
-          <div className="session-card-placeholder">{label ? label[0].toUpperCase() : "S"}</div>
-        )}
-      </div>
-      <div className="session-card-body">
-        <div className="session-card-head">
-          <h3>{session.title || "Untitled session"}</h3>
-        </div>
-        <div className="session-card-tags">
-          <span className="session-sport-pill">{getSessionSport(session)}</span>
-        </div>
-        <dl className="session-card-meta">
-          <div>
-            <dt>Starts</dt>
-            <dd>{formatSessionDate(session.session_date)}</dd>
-          </div>
-          <div>
-            <dt>Location</dt>
-            <dd>{formatSessionLocation(session)}</dd>
-          </div>
-          <div>
-            <dt>Duration</dt>
-            <dd>{formatSessionDuration(session.duration_hours)}</dd>
-          </div>
-        </dl>
-      </div>
-    </NavLink>
-  );
-}
 
 export default function Sessions() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -117,40 +68,45 @@ export default function Sessions() {
 
   return (
     <>
-      <section className="sessions-hero">
-        <div className="sessions-hero-copy">
-          <p className="eyebrow">Find your next session</p>
-          <h1>Sessions</h1>
-          <p>Explore recurring host-led sports sessions near you.</p>
-        </div>
-      </section>
+      <CatalogHeader
+        eyebrow="Find your next session"
+        title="Sessions"
+      >
+        <p>Explore recurring host-led sports sessions, training blocks, and casual games near you.</p>
+      </CatalogHeader>
 
-      <section className="sessions-page">
-        <div className="search-status">{status}</div>
-        <div className="sessions-grid">
+      <section className="catalog-page">
+        <ContentListShell
+          status={status && sessions.length ? status : ""}
+          isEmpty={sessions.length === 0}
+          emptyTitle="No sessions available"
+          emptyMessage={status || "There are no sessions available right now."}
+          pagination={(
+            <div className="events-pagination">
+              <button
+                className="pagination-btn"
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage <= 1}
+              >
+                Previous
+              </button>
+              <span className="pagination-info">Page {currentPage} of {totalPages}</span>
+              <button
+                className="pagination-btn"
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        >
           {sessions.map((session) => (
-            <SessionCard key={session.id || session.title} session={session} />
+            <SessionRow key={session.id || session.title} session={session} />
           ))}
-        </div>
-        <div className="events-pagination">
-          <button
-            className="pagination-btn"
-            type="button"
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage <= 1}
-          >
-            Previous
-          </button>
-          <span className="pagination-info">Page {currentPage} of {totalPages}</span>
-          <button
-            className="pagination-btn"
-            type="button"
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            disabled={currentPage >= totalPages}
-          >
-            Next
-          </button>
-        </div>
+        </ContentListShell>
       </section>
     </>
   );

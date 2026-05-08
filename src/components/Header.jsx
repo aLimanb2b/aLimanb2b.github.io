@@ -129,13 +129,14 @@ export default function Header() {
         className="menu-toggle"
         aria-label="Toggle navigation"
       />
-      <label htmlFor="menu-toggle" className="burger" aria-label="Open menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </label>
 
       <div className="nav-actions">
+        <label htmlFor="menu-toggle" className="burger" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </label>
+
         <nav className="nav-links">
           <NavLink to="/" className="hover-highlight">
             HOME
@@ -149,8 +150,8 @@ export default function Header() {
           <NavLink to="/support" className="hover-highlight">
             SUPPORT
           </NavLink>
-          <NavLink to="/coming-soon" className="hover-highlight">
-            NEWS
+          <NavLink to="/host" className="hover-highlight">
+            HOST
           </NavLink>
         </nav>
 
@@ -210,6 +211,9 @@ export default function Header() {
                 </NavLink>
                 <NavLink to="/sessions" className="profile-item" role="menuitem">
                   Sessions
+                </NavLink>
+                <NavLink to="/host-dashboard" className="profile-item" role="menuitem">
+                  Host Dashboard
                 </NavLink>
                 <button
                   className="profile-item profile-action"

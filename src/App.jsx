@@ -9,6 +9,7 @@ import CheckInPass from "./pages/CheckInPass.jsx";
 import Sessions from "./pages/Sessions.jsx";
 import SessionDetail from "./pages/SessionDetail.jsx";
 import Support from "./pages/Support.jsx";
+import HostInfo from "./pages/HostInfo.jsx";
 import HostVerification from "./pages/HostVerification.jsx";
 import HostDashboard from "./pages/HostDashboard.jsx";
 import Privacy from "./pages/Privacy.jsx";
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/session/:id" element={<SessionDetail />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/host" element={<HostInfo />} />
           <Route path="/host-verification" element={<HostVerification />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />

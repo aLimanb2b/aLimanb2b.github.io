@@ -9,7 +9,6 @@ import {
   formatSessionPrice,
   getRegisteredUsers,
   getSessionImage,
-  getSessionPricingLabel,
   getSessionStatusLabel,
   getSessionSummary,
   isPaidSession,
@@ -538,9 +537,6 @@ export default function SessionDetail() {
                 {getSessionStatusLabel(session)}
               </div>
               <div className="session-price-row">
-                <span className={`session-price-pill${paid ? " paid" : ""}`}>
-                  {getSessionPricingLabel(session)}
-                </span>
                 <strong>{formatSessionPrice(session)}</strong>
               </div>
               <p>

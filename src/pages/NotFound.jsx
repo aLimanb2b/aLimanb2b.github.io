@@ -1,11 +1,13 @@
-import { NavLink } from "react-router-dom";
+import { StatusPage } from "../components/SitePrimitives.jsx";
 
 export default function NotFound() {
   return (
-    <div className="coming-soon-container">
-      <h1>Page not found</h1>
-      <p>The page you are looking for does not exist.</p>
-      <NavLink to="/">Return to Home</NavLink>
-    </div>
+    <StatusPage
+      eyebrow="404"
+      title="Page not found"
+      message="The page you are looking for does not exist or has moved."
+      actionLabel="Return home"
+      to="/"
+    />
   );
 }

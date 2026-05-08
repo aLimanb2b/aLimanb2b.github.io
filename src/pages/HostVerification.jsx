@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api.js";
 
 const MAX_NIN_FILE_SIZE = 5 * 1024 * 1024;
@@ -76,7 +76,7 @@ export default function HostVerification() {
 
     async function validateToken() {
       if (!token) {
-        setTokenStatus("invalid");
+        setTokenStatus("info");
         return;
       }
       setTokenStatus("checking");
@@ -193,6 +193,32 @@ export default function HostVerification() {
           <a className="btn btn-primary" href="mailto:support@boxtobox.me">
             Contact support
           </a>
+        </div>
+      </section>
+    );
+  }
+
+  if (tokenStatus === "info") {
+    return (
+      <section className="host-verification-page">
+        <div className="host-verification-card">
+          <p className="eyebrow">Host verification</p>
+          <h1>Become a verified host</h1>
+          <p>
+            Verified hosts can run BoxtoBox sessions and events with reviewed contact and payout details. To start the process,
+            contact BoxtoBox support and we will send the next steps.
+          </p>
+          <div className="host-verification-note">
+            Include your full name, email, phone number, city, and a short description of the sessions or events you want to host.
+          </div>
+          <div className="host-verification-actions">
+            <a className="btn btn-primary" href="mailto:support@boxtobox.me?subject=Host%20verification%20request">
+              Email support
+            </a>
+            <NavLink className="btn btn-secondary" to="/support">
+              View support
+            </NavLink>
+          </div>
         </div>
       </section>
     );

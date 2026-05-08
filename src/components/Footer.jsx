@@ -2,36 +2,32 @@ import { NavLink } from "react-router-dom";
 
 export default function Footer() {
   return (
-    <footer className="social-section">
-      <div className="social-icons">
-        <p className="social-text">Please connect with us on your favourite platforms</p>
-        <NavLink to="/coming-soon">
-          <img src="/images/TikTok-logo-CMYK-Tag.png" alt="tiktok" />
-        </NavLink>
-        <NavLink to="/coming-soon">
-          <img src="/images/xlogo-black.png" alt="X" />
-        </NavLink>
-        <NavLink to="/coming-soon">
-          <img src="/images/Instagram_logo_2016.png" alt="Instagram" />
-        </NavLink>
-      </div>
+    <footer className="site-footer">
 
-      <div className="legal-links">
-        <NavLink to="/sessions" className="hover-highlight">
-          Sessions
-        </NavLink>
-        <span>|</span>
-        <NavLink to="/events" className="hover-highlight">
-          Events
-        </NavLink>
-        <span>|</span>
-        <NavLink to="/privacy" className="hover-highlight">
-          Privacy Policy
-        </NavLink>
-        <span>|</span>
-        <NavLink to="/terms" className="hover-highlight">
-          Terms &amp; Conditions
-        </NavLink>
+      <div className="site-footer-grid">
+        <div>
+          <p className="site-footer-label">Product</p>
+          <NavLink to="/sessions">Sessions</NavLink>
+          <NavLink to="/events">Events</NavLink>
+        </div>
+        <div>
+          <p className="site-footer-label">Host</p>
+          <NavLink to="/host">Host information</NavLink>
+          <NavLink to="/support">Host support</NavLink>
+          <NavLink to="/host-verification">Become verified</NavLink>
+        </div>
+        <div>
+          <p className="site-footer-label">Company</p>
+          <NavLink to="/support">Support</NavLink>
+          <NavLink to="/privacy">Privacy Policy</NavLink>
+          <NavLink to="/terms">Terms &amp; Conditions</NavLink>
+        </div>
+        <div>
+          <p className="site-footer-label">Social</p>
+          <NavLink to="/coming-soon">TikTok</NavLink>
+          <NavLink to="/coming-soon">X</NavLink>
+          <NavLink to="/coming-soon">Instagram</NavLink>
+        </div>
       </div>
     </footer>
   );

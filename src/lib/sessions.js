@@ -150,7 +150,3 @@ export function formatSessionPrice(session) {
     return `${currency} ${amount}`;
   }
 }
-
-export function getSessionPricingLabel(session) {
-  return isPaidSession(session) ? "Paid Session" : "Free Session";
-}
