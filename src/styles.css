@@ -2301,6 +2301,49 @@ section {
     min-width: 160px;
 }
 
+.session-player-actions {
+    gap: 14px;
+}
+
+.session-stats-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.session-stats-action-panel {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.session-stats-input-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.session-stats-select {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: #ffffff;
+}
+
+.session-stats-select:disabled,
+.session-stats-action-panel input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 .event-detail-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -4349,6 +4392,8 @@ section {
     .site-footer-grid,
     .session-card-meta,
     .event-detail-grid,
+    .session-stats-actions-grid,
+    .session-stats-input-grid,
     .host-reserve-form,
     .verification-steps {
         grid-template-columns: 1fr;

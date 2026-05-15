@@ -18,6 +18,20 @@ function getReservationLabel(user) {
   return String(user?.registration_status || "").toLowerCase() === "reserved" ? "Reserved" : "Registered";
 }
 
+function normalizeStatStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getDisplayName(player) {
+  return player?.name || player?.account_id || player?.id || "Registered player";
+}
+
+function sortNomineesByName(players) {
+  return [...(players || [])].sort((first, second) =>
+    getDisplayName(first).localeCompare(getDisplayName(second), undefined, { sensitivity: "base" }),
+  );
+}
+
 function RegisteredUserCard({ user, actionLabel = "", onAction = null, actionDisabled = false }) {
   const name = user.name || "Registered user";
   const initial = name.trim() ? name.trim()[0].toUpperCase() : "U";
@@ -89,6 +103,15 @@ export default function SessionDetail() {
   const [hostReconcileSummary, setHostReconcileSummary] = useState(null);
   const [hostTargetAccountId, setHostTargetAccountId] = useState("");
   const [hostTargetEmail, setHostTargetEmail] = useState("");
+  const [statsBoard, setStatsBoard] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsSubmitting, setStatsSubmitting] = useState(false);
+  const [voteSubmitting, setVoteSubmitting] = useState(false);
+  const [statsError, setStatsError] = useState("");
+  const [statsMessage, setStatsMessage] = useState("");
+  const [goalsInput, setGoalsInput] = useState("0");
+  const [assistsInput, setAssistsInput] = useState("0");
+  const [nomineeAccountId, setNomineeAccountId] = useState("");
   const autoVerifyKeyRef = useRef("");
 
   async function loadSession(targetId) {
@@ -132,6 +155,38 @@ export default function SessionDetail() {
     }
   }
 
+  async function fetchSessionStats(targetId) {
+    if (!targetId || !authUser?.uid) {
+      setStatsBoard(null);
+      return null;
+    }
+
+    setStatsLoading(true);
+    setStatsError("");
+    try {
+      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/stats`);
+      setStatsBoard(data || null);
+      const submission = data?.current_user_submission;
+      if (submission && normalizeStatStatus(submission.status) !== "rejected") {
+        setGoalsInput(String(Number(submission.goals || 0)));
+        setAssistsInput(String(Number(submission.assists || 0)));
+      }
+      const vote = data?.current_user_vote;
+      if (vote?.nominee_account_id) {
+        setNomineeAccountId(vote.nominee_account_id);
+      } else if (!nomineeAccountId && Array.isArray(data?.leaderboard) && data.leaderboard.length) {
+        setNomineeAccountId(sortNomineesByName(data.leaderboard)[0]?.account_id || "");
+      }
+      return data || null;
+    } catch (error) {
+      setStatsBoard(null);
+      setStatsError(error?.message || "Unable to load session stats right now.");
+      return null;
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
   useEffect(() => {
     let unsubscribe = null;
     try {
@@ -164,6 +219,7 @@ export default function SessionDetail() {
       return;
     }
     setAccountState(null);
+    setStatsBoard(null);
   }, [authUser?.uid, id]);
 
   useEffect(() => {
@@ -250,6 +306,36 @@ export default function SessionDetail() {
     session?.session_status !== "completed" &&
     hasSpots,
   );
+  const currentSubmission = statsBoard?.current_user_submission || null;
+  const currentSubmissionStatus = normalizeStatStatus(currentSubmission?.status);
+  const hasCurrentVote = Boolean(statsBoard?.current_user_vote?.nominee_account_id);
+  const nominees = useMemo(() => sortNomineesByName(statsBoard?.leaderboard || []), [statsBoard]);
+  const selectedVoteName = useMemo(() => {
+    const selectedId = statsBoard?.current_user_vote?.nominee_account_id || nomineeAccountId;
+    const nominee = nominees.find((player) => player.account_id === selectedId);
+    return nominee ? getDisplayName(nominee) : selectedId;
+  }, [nomineeAccountId, nominees, statsBoard?.current_user_vote?.nominee_account_id]);
+  const canSubmitStats = Boolean(
+    isRegistered &&
+    statsBoard?.stats_open &&
+    (!currentSubmission || currentSubmissionStatus === "rejected"),
+  );
+  const canVotePlayerOfWeek = Boolean(
+    isRegistered &&
+    statsBoard?.voting_open &&
+    !hasCurrentVote &&
+    nominees.length,
+  );
+
+  useEffect(() => {
+    if (id && authUser?.uid && isRegistered) {
+      fetchSessionStats(id);
+      return;
+    }
+    setStatsBoard(null);
+    setStatsError("");
+    setStatsMessage("");
+  }, [authUser?.uid, id, isRegistered]);
 
   useEffect(() => {
     const paystackReturn = searchParams.get("paystack");
@@ -445,6 +531,75 @@ export default function SessionDetail() {
     }
   };
 
+  const handleSubmitStats = async (event) => {
+    event.preventDefault();
+    setStatsError("");
+    setStatsMessage("");
+
+    if (!id || !isRegistered) {
+      setStatsError("You need to be registered for this session before submitting stats.");
+      return;
+    }
+    if (!statsBoard?.stats_open) {
+      setStatsError("Stats are not open for this session yet.");
+      return;
+    }
+
+    const goals = Number(goalsInput);
+    const assists = Number(assistsInput);
+    if (!Number.isInteger(goals) || goals < 0 || !Number.isInteger(assists) || assists < 0) {
+      setStatsError("Goals and assists must be whole numbers of 0 or more.");
+      return;
+    }
+
+    try {
+      setStatsSubmitting(true);
+      await apiRequest(`/v2/session/${encodeURIComponent(id)}/stats/submit`, {
+        method: "POST",
+        body: { goals, assists },
+      });
+      await fetchSessionStats(id);
+      setStatsMessage("Stats submitted. The host will review them.");
+    } catch (error) {
+      setStatsError(error?.message || "Unable to submit stats right now.");
+    } finally {
+      setStatsSubmitting(false);
+    }
+  };
+
+  const handleVotePlayerOfWeek = async (event) => {
+    event.preventDefault();
+    setStatsError("");
+    setStatsMessage("");
+
+    if (!id || !isRegistered) {
+      setStatsError("You need to be registered for this session before voting.");
+      return;
+    }
+    if (!statsBoard?.voting_open) {
+      setStatsError("Player of the Week voting is not open right now.");
+      return;
+    }
+    if (!nomineeAccountId) {
+      setStatsError("Choose a player to vote for.");
+      return;
+    }
+
+    try {
+      setVoteSubmitting(true);
+      await apiRequest(`/v2/session/${encodeURIComponent(id)}/player-of-week/vote`, {
+        method: "POST",
+        body: { nominee_account_id: nomineeAccountId },
+      });
+      await fetchSessionStats(id);
+      setStatsMessage("Vote submitted.");
+    } catch (error) {
+      setStatsError(error?.message || "Unable to submit your vote right now.");
+    } finally {
+      setVoteSubmitting(false);
+    }
+  };
+
   const handleCancelReservedUser = async (targetAccountId) => {
     setHostActionError("");
     setHostActionMessage("");
@@ -620,6 +775,133 @@ export default function SessionDetail() {
                 </p>
               ) : null}
             </div>
+
+            {authUser && isRegistered ? (
+              <div className="event-detail-actions session-player-actions">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Session player actions</p>
+                    <p className="event-action-subtitle">
+                      Submit your football stats and vote for Player of the Week when each action opens.
+                    </p>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={statsLoading}
+                    onClick={() => fetchSessionStats(id)}
+                  >
+                    {statsLoading ? "Refreshing..." : "Refresh"}
+                  </button>
+                </div>
+
+                <div className="session-stats-actions-grid">
+                  <form className="session-stats-action-panel" onSubmit={handleSubmitStats}>
+                    <div>
+                      <p className="event-action-title">Submit Stats</p>
+                      <p className="event-action-subtitle">
+                        {currentSubmissionStatus === "confirmed"
+                          ? `Confirmed: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists.`
+                          : currentSubmissionStatus === "pending"
+                          ? `Pending review: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists.`
+                          : currentSubmissionStatus === "rejected"
+                          ? "Your last submission was rejected. You can submit again."
+                          : statsBoard?.stats_open
+                          ? "Enter your goals and assists for this session."
+                          : "Stats open once the session starts."}
+                      </p>
+                    </div>
+                    <div className="session-stats-input-grid">
+                      <label className="payment-field">
+                        Goals
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={goalsInput}
+                          disabled={!canSubmitStats || statsSubmitting}
+                          onChange={(event) => setGoalsInput(event.target.value)}
+                        />
+                      </label>
+                      <label className="payment-field">
+                        Assists
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={assistsInput}
+                          disabled={!canSubmitStats || statsSubmitting}
+                          onChange={(event) => setAssistsInput(event.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      type="submit"
+                      disabled={!canSubmitStats || statsSubmitting}
+                    >
+                      {statsSubmitting ? "Submitting..." : currentSubmissionStatus === "rejected" ? "Resubmit Stats" : "Submit Stats"}
+                    </button>
+                  </form>
+
+                  <form className="session-stats-action-panel" onSubmit={handleVotePlayerOfWeek}>
+                    <div>
+                      <p className="event-action-title">Vote Player of the Week</p>
+                      <p className="event-action-subtitle">
+                        {hasCurrentVote
+                          ? `You voted for ${selectedVoteName || "a registered player"}.`
+                          : statsBoard?.voting_open
+                          ? "Choose one registered player. Self-votes are allowed."
+                          : "Voting opens after the session ends."}
+                      </p>
+                    </div>
+                    <label className="payment-field">
+                      Player
+                      <select
+                        className="session-stats-select"
+                        value={nomineeAccountId}
+                        disabled={!canVotePlayerOfWeek || voteSubmitting}
+                        onChange={(event) => setNomineeAccountId(event.target.value)}
+                      >
+                        {nominees.length ? (
+                          nominees.map((player) => (
+                            <option key={player.account_id} value={player.account_id}>
+                              {getDisplayName(player)}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">No registered players</option>
+                        )}
+                      </select>
+                    </label>
+                    <button
+                      className="btn btn-primary"
+                      type="submit"
+                      disabled={!canVotePlayerOfWeek || voteSubmitting}
+                    >
+                      {voteSubmitting ? "Submitting..." : "Vote"}
+                    </button>
+                  </form>
+                </div>
+
+                {statsError ? <p className="event-action-error">{statsError}</p> : null}
+                {statsMessage ? <p className="event-action-success">{statsMessage}</p> : null}
+                {statsLoading && !statsBoard ? (
+                  <p className="event-action-note">Loading session player actions...</p>
+                ) : null}
+              </div>
+            ) : authUser ? (
+              <div className="event-detail-actions session-player-actions">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Session player actions</p>
+                    <p className="event-action-subtitle">
+                      Register for this session to submit stats and vote for Player of the Week.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             {isHost ? (
               <div className="event-detail-actions">
