@@ -212,9 +212,6 @@ export default function Header() {
                 <NavLink to="/sessions" className="profile-item" role="menuitem">
                   Sessions
                 </NavLink>
-                <NavLink to="/host-dashboard" className="profile-item" role="menuitem">
-                  Host Dashboard
-                </NavLink>
                 <button
                   className="profile-item profile-action"
                   type="button"

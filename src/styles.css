@@ -2324,7 +2324,7 @@ section {
 
 .session-stats-input-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
 }
 
@@ -2342,6 +2342,48 @@ section {
 .session-stats-action-panel input:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+.session-action-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 10, 30, 0.45);
+}
+
+.session-action-modal {
+    width: min(520px, 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: var(--shadow);
+    padding: 24px;
+}
+
+.session-action-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.session-action-modal-header h2 {
+    margin: 0;
+}
+
+.session-action-modal-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.session-action-modal-form .btn {
+    width: 100%;
 }
 
 .event-detail-grid {
@@ -3975,6 +4017,17 @@ section {
     padding: 14px;
 }
 
+.event-detail-grid {
+    gap: 12px;
+    border-top: 0;
+    border-left: 0;
+}
+
+.event-detail-grid .event-detail-item {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
 .events-pagination {
     max-width: 1180px;
     margin: 24px auto 0;
@@ -4391,12 +4444,15 @@ section {
     .site-stat-grid,
     .site-footer-grid,
     .session-card-meta,
-    .event-detail-grid,
     .session-stats-actions-grid,
     .session-stats-input-grid,
     .host-reserve-form,
     .verification-steps {
         grid-template-columns: 1fr;
+    }
+
+    .event-detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .event-tile,

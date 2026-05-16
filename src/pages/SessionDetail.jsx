@@ -111,7 +111,9 @@ export default function SessionDetail() {
   const [statsMessage, setStatsMessage] = useState("");
   const [goalsInput, setGoalsInput] = useState("0");
   const [assistsInput, setAssistsInput] = useState("0");
+  const [cleanSheetsInput, setCleanSheetsInput] = useState("0");
   const [nomineeAccountId, setNomineeAccountId] = useState("");
+  const [activeStatsModal, setActiveStatsModal] = useState(null);
   const autoVerifyKeyRef = useRef("");
 
   async function loadSession(targetId) {
@@ -164,12 +166,15 @@ export default function SessionDetail() {
     setStatsLoading(true);
     setStatsError("");
     try {
-      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/stats`);
+      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/stats`, {
+        query: { account_id: authUser.uid },
+      });
       setStatsBoard(data || null);
       const submission = data?.current_user_submission;
       if (submission && normalizeStatStatus(submission.status) !== "rejected") {
         setGoalsInput(String(Number(submission.goals || 0)));
         setAssistsInput(String(Number(submission.assists || 0)));
+        setCleanSheetsInput(String(Number(submission.clean_sheets || 0)));
       }
       const vote = data?.current_user_vote;
       if (vote?.nominee_account_id) {
@@ -290,7 +295,14 @@ export default function SessionDetail() {
   const paid = isPaidSession(session || {});
   const paymentStatus = String(accountState?.payment_status || "").toLowerCase();
   const isPaid = Boolean(accountState?.paid) || ["paid", "success", "successful", "completed", "complete"].includes(paymentStatus);
-  const isRegistered = Boolean(accountState?.register);
+  const isRegisteredInRoster = Boolean(
+    authUser?.uid &&
+      registeredUsers.some((user) => {
+        const status = String(user?.registration_status || "registered").toLowerCase();
+        return user?.id === authUser.uid && status === "registered";
+      }),
+  );
+  const isRegistered = Boolean(accountState?.register) || isRegisteredInRoster;
   const isReservedForUser = Boolean(accountState?.reserved_by_host) || String(accountState?.reservation_status || "").toLowerCase() === "reserved";
   const isHost = Boolean(authUser?.uid) && authUser.uid === session?.host_id;
   const registrationOpen = session?.registration_open !== false;
@@ -310,32 +322,55 @@ export default function SessionDetail() {
   const currentSubmissionStatus = normalizeStatStatus(currentSubmission?.status);
   const hasCurrentVote = Boolean(statsBoard?.current_user_vote?.nominee_account_id);
   const nominees = useMemo(() => sortNomineesByName(statsBoard?.leaderboard || []), [statsBoard]);
+  const isStatsParticipant = Boolean(
+    authUser?.uid &&
+      (
+        statsBoard?.participants?.some((player) => player?.id === authUser.uid || player?.account_id === authUser.uid) ||
+        statsBoard?.leaderboard?.some((player) => player?.account_id === authUser.uid || player?.id === authUser.uid)
+      ),
+  );
+  const canUseSessionPlayerActions = isRegistered || isStatsParticipant;
   const selectedVoteName = useMemo(() => {
     const selectedId = statsBoard?.current_user_vote?.nominee_account_id || nomineeAccountId;
     const nominee = nominees.find((player) => player.account_id === selectedId);
     return nominee ? getDisplayName(nominee) : selectedId;
   }, [nomineeAccountId, nominees, statsBoard?.current_user_vote?.nominee_account_id]);
   const canSubmitStats = Boolean(
-    isRegistered &&
+    canUseSessionPlayerActions &&
     statsBoard?.stats_open &&
     (!currentSubmission || currentSubmissionStatus === "rejected"),
   );
   const canVotePlayerOfWeek = Boolean(
-    isRegistered &&
+    canUseSessionPlayerActions &&
     statsBoard?.voting_open &&
     !hasCurrentVote &&
     nominees.length,
   );
+  const currentCleanSheets = currentSubmission?.clean_sheets ?? 0;
+  const submitStatsDescription = currentSubmissionStatus === "confirmed"
+    ? `Confirmed: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists, ${currentCleanSheets} clean sheets.`
+    : currentSubmissionStatus === "pending"
+    ? `Pending review: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists, ${currentCleanSheets} clean sheets.`
+    : currentSubmissionStatus === "rejected"
+    ? "Your last submission was rejected. You can submit again."
+    : statsBoard?.stats_open
+    ? "Enter your goals, assists, and clean sheets for this session."
+    : "Stats are closed for this session.";
+  const voteDescription = hasCurrentVote
+    ? `You voted for ${selectedVoteName || "a registered player"}.`
+    : statsBoard?.voting_open
+    ? "Choose one registered player. Self-votes are allowed."
+    : "Player of the Week voting is closed.";
 
   useEffect(() => {
-    if (id && authUser?.uid && isRegistered) {
+    if (id && authUser?.uid) {
       fetchSessionStats(id);
       return;
     }
     setStatsBoard(null);
     setStatsError("");
     setStatsMessage("");
-  }, [authUser?.uid, id, isRegistered]);
+  }, [authUser?.uid, id]);
 
   useEffect(() => {
     const paystackReturn = searchParams.get("paystack");
@@ -536,7 +571,7 @@ export default function SessionDetail() {
     setStatsError("");
     setStatsMessage("");
 
-    if (!id || !isRegistered) {
+    if (!id || !canUseSessionPlayerActions) {
       setStatsError("You need to be registered for this session before submitting stats.");
       return;
     }
@@ -547,8 +582,16 @@ export default function SessionDetail() {
 
     const goals = Number(goalsInput);
     const assists = Number(assistsInput);
-    if (!Number.isInteger(goals) || goals < 0 || !Number.isInteger(assists) || assists < 0) {
-      setStatsError("Goals and assists must be whole numbers of 0 or more.");
+    const cleanSheets = Number(cleanSheetsInput);
+    if (
+      !Number.isInteger(goals) ||
+      goals < 0 ||
+      !Number.isInteger(assists) ||
+      assists < 0 ||
+      !Number.isInteger(cleanSheets) ||
+      cleanSheets < 0
+    ) {
+      setStatsError("Goals, assists, and clean sheets must be whole numbers of 0 or more.");
       return;
     }
 
@@ -556,10 +599,11 @@ export default function SessionDetail() {
       setStatsSubmitting(true);
       await apiRequest(`/v2/session/${encodeURIComponent(id)}/stats/submit`, {
         method: "POST",
-        body: { goals, assists },
+        body: { goals, assists, clean_sheets: cleanSheets },
       });
       await fetchSessionStats(id);
       setStatsMessage("Stats submitted. The host will review them.");
+      setActiveStatsModal(null);
     } catch (error) {
       setStatsError(error?.message || "Unable to submit stats right now.");
     } finally {
@@ -572,7 +616,7 @@ export default function SessionDetail() {
     setStatsError("");
     setStatsMessage("");
 
-    if (!id || !isRegistered) {
+    if (!id || !canUseSessionPlayerActions) {
       setStatsError("You need to be registered for this session before voting.");
       return;
     }
@@ -593,6 +637,7 @@ export default function SessionDetail() {
       });
       await fetchSessionStats(id);
       setStatsMessage("Vote submitted.");
+      setActiveStatsModal(null);
     } catch (error) {
       setStatsError(error?.message || "Unable to submit your vote right now.");
     } finally {
@@ -776,7 +821,7 @@ export default function SessionDetail() {
               ) : null}
             </div>
 
-            {authUser && isRegistered ? (
+            {authUser && (canUseSessionPlayerActions || statsLoading) ? (
               <div className="event-detail-actions session-player-actions">
                 <div className="event-action-row">
                   <div>
@@ -796,21 +841,85 @@ export default function SessionDetail() {
                 </div>
 
                 <div className="session-stats-actions-grid">
-                  <form className="session-stats-action-panel" onSubmit={handleSubmitStats}>
+                  <div className="session-stats-action-panel">
                     <div>
                       <p className="event-action-title">Submit Stats</p>
-                      <p className="event-action-subtitle">
-                        {currentSubmissionStatus === "confirmed"
-                          ? `Confirmed: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists.`
-                          : currentSubmissionStatus === "pending"
-                          ? `Pending review: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists.`
-                          : currentSubmissionStatus === "rejected"
-                          ? "Your last submission was rejected. You can submit again."
-                          : statsBoard?.stats_open
-                          ? "Enter your goals and assists for this session."
-                          : "Stats open once the session starts."}
-                      </p>
+                      <p className="event-action-subtitle">{submitStatsDescription}</p>
                     </div>
+                    <button
+                      className="btn btn-primary"
+                      type="button"
+                      disabled={statsLoading || !statsBoard}
+                      onClick={() => setActiveStatsModal("stats")}
+                    >
+                      {currentSubmissionStatus === "confirmed"
+                        ? "View Stats"
+                        : currentSubmissionStatus === "rejected"
+                        ? "Resubmit Stats"
+                        : "Submit Stats"}
+                    </button>
+                  </div>
+
+                  <div className="session-stats-action-panel">
+                    <div>
+                      <p className="event-action-title">Vote Player of the Week</p>
+                      <p className="event-action-subtitle">{voteDescription}</p>
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      type="button"
+                      disabled={statsLoading || !statsBoard}
+                      onClick={() => setActiveStatsModal("vote")}
+                    >
+                      {hasCurrentVote ? "View Vote" : "Vote"}
+                    </button>
+                  </div>
+                </div>
+
+                {statsError ? <p className="event-action-error">{statsError}</p> : null}
+                {statsMessage ? <p className="event-action-success">{statsMessage}</p> : null}
+                {statsLoading && !statsBoard ? (
+                  <p className="event-action-note">Loading session player actions...</p>
+                ) : null}
+              </div>
+            ) : authUser ? (
+              <div className="event-detail-actions session-player-actions">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Session player actions</p>
+                    <p className="event-action-subtitle">
+                      Register for this session or join the most recent occurrence to submit stats and vote for Player of the Week.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {activeStatsModal === "stats" ? (
+              <div className="session-action-modal-overlay" role="presentation" onClick={() => setActiveStatsModal(null)}>
+                <div
+                  className="session-action-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="submit-stats-title"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="session-action-modal-header">
+                    <div>
+                      <p className="payment-eyebrow">Session stats</p>
+                      <h2 id="submit-stats-title">Submit Stats</h2>
+                    </div>
+                    <button
+                      className="payment-close"
+                      type="button"
+                      aria-label="Close submit stats"
+                      onClick={() => setActiveStatsModal(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <p className="event-action-subtitle">{submitStatsDescription}</p>
+                  <form className="session-action-modal-form" onSubmit={handleSubmitStats}>
                     <div className="session-stats-input-grid">
                       <label className="payment-field">
                         Goals
@@ -834,6 +943,17 @@ export default function SessionDetail() {
                           onChange={(event) => setAssistsInput(event.target.value)}
                         />
                       </label>
+                      <label className="payment-field">
+                        Clean Sheets
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={cleanSheetsInput}
+                          disabled={!canSubmitStats || statsSubmitting}
+                          onChange={(event) => setCleanSheetsInput(event.target.value)}
+                        />
+                      </label>
                     </div>
                     <button
                       className="btn btn-primary"
@@ -843,18 +963,35 @@ export default function SessionDetail() {
                       {statsSubmitting ? "Submitting..." : currentSubmissionStatus === "rejected" ? "Resubmit Stats" : "Submit Stats"}
                     </button>
                   </form>
+                </div>
+              </div>
+            ) : null}
 
-                  <form className="session-stats-action-panel" onSubmit={handleVotePlayerOfWeek}>
+            {activeStatsModal === "vote" ? (
+              <div className="session-action-modal-overlay" role="presentation" onClick={() => setActiveStatsModal(null)}>
+                <div
+                  className="session-action-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="vote-player-title"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="session-action-modal-header">
                     <div>
-                      <p className="event-action-title">Vote Player of the Week</p>
-                      <p className="event-action-subtitle">
-                        {hasCurrentVote
-                          ? `You voted for ${selectedVoteName || "a registered player"}.`
-                          : statsBoard?.voting_open
-                          ? "Choose one registered player. Self-votes are allowed."
-                          : "Voting opens after the session ends."}
-                      </p>
+                      <p className="payment-eyebrow">Player of the Week</p>
+                      <h2 id="vote-player-title">Cast Your Vote</h2>
                     </div>
+                    <button
+                      className="payment-close"
+                      type="button"
+                      aria-label="Close player of the week vote"
+                      onClick={() => setActiveStatsModal(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <p className="event-action-subtitle">{voteDescription}</p>
+                  <form className="session-action-modal-form" onSubmit={handleVotePlayerOfWeek}>
                     <label className="payment-field">
                       Player
                       <select
@@ -882,23 +1019,6 @@ export default function SessionDetail() {
                       {voteSubmitting ? "Submitting..." : "Vote"}
                     </button>
                   </form>
-                </div>
-
-                {statsError ? <p className="event-action-error">{statsError}</p> : null}
-                {statsMessage ? <p className="event-action-success">{statsMessage}</p> : null}
-                {statsLoading && !statsBoard ? (
-                  <p className="event-action-note">Loading session player actions...</p>
-                ) : null}
-              </div>
-            ) : authUser ? (
-              <div className="event-detail-actions session-player-actions">
-                <div className="event-action-row">
-                  <div>
-                    <p className="event-action-title">Session player actions</p>
-                    <p className="event-action-subtitle">
-                      Register for this session to submit stats and vote for Player of the Week.
-                    </p>
-                  </div>
                 </div>
               </div>
             ) : null}
