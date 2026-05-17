@@ -368,6 +368,46 @@ section {
     max-width: 440px;
 }
 
+.host-login-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.host-login-form label {
+    display: grid;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.host-login-form input {
+    min-height: 46px;
+    border: 1px solid #0b0b0f;
+    border-radius: 6px;
+    padding: 0 12px;
+    background: #ffffff;
+    color: #0b0b0f;
+    font: inherit;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.host-dashboard-error,
+.host-dashboard-note {
+    border: 1px solid #0b0b0f;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 0;
+}
+
+.host-dashboard-error {
+    background: #0b0b0f;
+    color: #ffffff;
+}
+
 .host-dashboard-shell {
     display: grid;
     grid-template-columns: 264px minmax(0, 1fr);
@@ -448,7 +488,7 @@ section {
 }
 
 .host-dashboard-user {
-    margin-top: auto;
+    margin-top: 0;
     padding: 20px;
     border-top: 1px solid #0b0b0f;
     display: grid;
@@ -473,7 +513,11 @@ section {
     font-size: 13px;
 }
 
-.host-dashboard-user button,
+.host-dashboard-logout {
+    padding: 0 20px 20px;
+}
+
+.host-dashboard-logout button,
 .host-dashboard-button {
     min-height: 44px;
     border-radius: 6px;
@@ -491,12 +535,16 @@ section {
     padding: 0 18px;
 }
 
+.host-dashboard-logout button {
+    width: 100%;
+}
+
 .host-dashboard-button.primary {
     background: #0b0b0f;
     color: #ffffff;
 }
 
-.host-dashboard-user button:hover,
+.host-dashboard-logout button:hover,
 .host-dashboard-button:hover {
     transform: translateY(-1px);
 }
@@ -590,11 +638,21 @@ section {
 }
 
 .host-content-row {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #0b0b0f;
+    background: #ffffff;
+    color: #0b0b0f;
+    cursor: pointer;
+    text-align: left;
     display: grid;
     grid-template-columns: minmax(220px, 1fr) minmax(360px, 1.2fr);
     gap: 20px;
     padding: 22px 0;
-    border-bottom: 1px solid #0b0b0f;
+}
+
+.host-content-row:hover {
+    background: #f7f7f7;
 }
 
 .host-content-row h3 {
@@ -611,7 +669,7 @@ section {
 .host-content-row dl {
     margin: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 12px;
     align-items: center;
 }
@@ -700,6 +758,95 @@ section {
     letter-spacing: 0.14em;
 }
 
+.host-revenue-chart {
+    min-height: 280px;
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    padding: 18px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    gap: 14px;
+    align-items: end;
+}
+
+.host-revenue-bar {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: 180px auto auto;
+    gap: 8px;
+}
+
+.host-revenue-track {
+    border: 1px solid #0b0b0f;
+    border-radius: 6px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.host-revenue-track span {
+    display: block;
+    width: 100%;
+    background: #0b0b0f;
+}
+
+.host-revenue-bar strong,
+.host-revenue-bar small {
+    overflow-wrap: anywhere;
+}
+
+.host-revenue-bar small {
+    color: #646a73;
+    font-weight: 800;
+}
+
+.host-detail-panel {
+    margin-top: 18px;
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    display: grid;
+    gap: 24px;
+    padding: clamp(18px, 4vw, 32px);
+}
+
+.host-detail-panel h2 {
+    margin: 4px 0;
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.host-detail-panel p {
+    margin: 0;
+}
+
+.host-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid #0b0b0f;
+    border-left: 1px solid #0b0b0f;
+}
+
+.host-detail-grid .host-metric {
+    border-right: 1px solid #0b0b0f;
+    border-bottom: 1px solid #0b0b0f;
+}
+
+.host-tools-panel {
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    padding: 18px;
+    display: grid;
+    gap: 8px;
+}
+
+.host-tools-panel h3 {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: 0;
+}
+
 @media (max-width: 900px) {
     .host-dashboard-shell {
         grid-template-columns: 1fr;
@@ -728,7 +875,16 @@ section {
         display: none;
     }
 
+    .host-dashboard-logout {
+        padding: 12px;
+        border-top: 1px solid #0b0b0f;
+    }
+
     .host-dashboard-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .host-detail-grid {
         grid-template-columns: 1fr;
     }
 

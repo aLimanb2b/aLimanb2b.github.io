@@ -1,113 +1,137 @@
-const MOCK_HOST_KEY = "boxtobox_mock_host";
+import { apiRequest } from "./api.js";
 
-const mockDashboard = {
-  host_id: "mock-host-1",
-  total_count: 4,
-  results: [
-    {
-      content_type: "event",
-      id: "event-fifa-lagos",
-      title: "Lagos FIFA Knockout",
-      status: "upcoming",
-      starts_at: "2026-06-01T18:00:00.000Z",
-      deadline: "2026-05-31T18:00:00.000Z",
-      location: { address_name: "The Arena", city: "Lagos", country: "Nigeria" },
-      capacity: 32,
-      registered_count: 24,
-      reserved_count: 2,
-      remaining_count: 6,
-      payment_required: true,
-      currency: "NGN",
-      entry_fee: 5000,
-      payment_summary: { currency: "NGN", paid_count: 18, pending_count: 4, failed_count: 2, gross_paid_amount: 90000 },
-      attendees: [
-        { id: "u-1", name: "Tunde Adebayo", email: "tunde@example.com", payment_status: "paid" },
-        { id: "u-2", name: "Ada Nwosu", email: "ada@example.com", payment_status: "pending" },
-        { id: "u-3", name: "Kemi Lawal", email: "kemi@example.com", payment_status: "paid" },
-      ],
-    },
-    {
-      content_type: "session",
-      id: "session-thursday",
-      title: "Thursday 5-a-side",
-      status: "upcoming",
-      starts_at: "2026-06-04T19:00:00.000Z",
-      deadline: "2026-06-04T12:00:00.000Z",
-      location: { address_name: "Lekki Sports Park", city: "Lagos", country: "Nigeria" },
-      capacity: 14,
-      registered_count: 12,
-      reserved_count: 1,
-      remaining_count: 1,
-      payment_required: true,
-      currency: "NGN",
-      entry_fee: 2500,
-      payment_summary: { currency: "NGN", paid_count: 10, pending_count: 2, failed_count: 0, gross_paid_amount: 25000 },
-      attendees: [
-        { id: "u-4", name: "Ife Okoro", email: "ife@example.com", registration_status: "registered" },
-        { id: "u-5", name: "Sola Martins", email: "sola@example.com", registration_status: "registered" },
-      ],
-    },
-    {
-      content_type: "event",
-      id: "event-efootball",
-      title: "eFootball Weekend Cup",
-      status: "completed",
-      starts_at: "2026-04-18T16:00:00.000Z",
-      deadline: "2026-04-17T18:00:00.000Z",
-      location: { address_name: "BoxToBox House", city: "Abuja", country: "Nigeria" },
-      capacity: 16,
-      registered_count: 16,
-      reserved_count: 0,
-      remaining_count: 0,
-      payment_required: false,
-      currency: "NGN",
-      entry_fee: 0,
-      payment_summary: { currency: "NGN", paid_count: 0, pending_count: 0, failed_count: 0, gross_paid_amount: 0 },
-      attendees: [
-        { id: "u-6", name: "Musa Bello", email: "musa@example.com", payment_status: "not_required" },
-      ],
-    },
-    {
-      content_type: "session",
-      id: "session-archived",
-      title: "Sunday Recovery Ball",
-      status: "archived",
-      starts_at: "2026-03-10T08:00:00.000Z",
-      deadline: "2026-03-09T18:00:00.000Z",
-      location: { address_name: "Mainland Turf", city: "Lagos", country: "Nigeria" },
-      capacity: 20,
-      registered_count: 17,
-      reserved_count: 0,
-      remaining_count: 3,
-      payment_required: true,
-      currency: "NGN",
-      entry_fee: 2000,
-      payment_summary: { currency: "NGN", paid_count: 16, pending_count: 0, failed_count: 1, gross_paid_amount: 32000 },
-      attendees: [
-        { id: "u-7", name: "Nora Eze", email: "nora@example.com", registration_status: "registered" },
-      ],
-    },
-  ],
-};
+const HOST_SESSION_KEY = "boxtobox_host_session";
 
-export function getMockHost() {
+function readSessionStorage() {
   try {
-    const raw = window.localStorage.getItem(MOCK_HOST_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return window.sessionStorage;
   } catch (error) {
     return null;
   }
 }
 
-export function setMockHost(host) {
-  window.localStorage.setItem(MOCK_HOST_KEY, JSON.stringify(host));
+export function getStoredHostSession() {
+  const storage = readSessionStorage();
+  if (!storage) {
+    return null;
+  }
+  try {
+    const raw = storage.getItem(HOST_SESSION_KEY);
+    if (!raw) {
+      return null;
+    }
+    const session = JSON.parse(raw);
+    if (!session?.token) {
+      return null;
+    }
+    if (session.refresh_expires_at && new Date(session.refresh_expires_at).getTime() <= Date.now()) {
+      clearStoredHostSession();
+      return null;
+    }
+    return session;
+  } catch (error) {
+    return null;
+  }
 }
 
-export function clearMockHost() {
-  window.localStorage.removeItem(MOCK_HOST_KEY);
+export function setStoredHostSession(session) {
+  const storage = readSessionStorage();
+  if (!storage) {
+    return;
+  }
+  storage.setItem(HOST_SESSION_KEY, JSON.stringify(session));
 }
 
-export async function fetchHostDashboard() {
-  await new Promise((resolve) => window.setTimeout(resolve, 180));
-  return mockDashboard;
+export function clearStoredHostSession() {
+  const storage = readSessionStorage();
+  if (storage) {
+    storage.removeItem(HOST_SESSION_KEY);
+  }
+}
+
+export async function requestHostAuthCode() {
+  return await apiRequest("/v2.7/host/auth/code", {
+    method: "POST",
+  });
+}
+
+export async function verifyHostAuthCode({ codeId, code }) {
+  const result = await apiRequest("/v2.7/host/auth/verify", {
+    method: "POST",
+    body: {
+      code_id: codeId,
+      code,
+    },
+  });
+  const session = {
+    token: result.host_session_token,
+    refreshToken: result.host_refresh_token,
+    expires_at: result.expires_at,
+    refresh_expires_at: result.refresh_expires_at,
+    host: result.host,
+  };
+  setStoredHostSession(session);
+  return session;
+}
+
+function shouldRefreshSession(session) {
+  if (!session?.refreshToken) {
+    return false;
+  }
+  if (!session?.token || !session?.expires_at) {
+    return true;
+  }
+  return new Date(session.expires_at).getTime() <= Date.now();
+}
+
+export async function refreshHostSession(session = getStoredHostSession()) {
+  if (!session?.refreshToken) {
+    const err = new Error("Host refresh token required.");
+    err.code = "HOST_REFRESH_REQUIRED";
+    throw err;
+  }
+  const result = await apiRequest("/v2.7/host/auth/refresh", {
+    method: "POST",
+    body: {
+      host_refresh_token: session.refreshToken,
+    },
+  });
+  const nextSession = {
+    token: result.host_session_token,
+    refreshToken: result.host_refresh_token,
+    expires_at: result.expires_at,
+    refresh_expires_at: result.refresh_expires_at,
+    host: result.host,
+  };
+  setStoredHostSession(nextSession);
+  return nextSession;
+}
+
+export async function fetchHostDashboard(session = getStoredHostSession()) {
+  let activeSession = session;
+  if (shouldRefreshSession(activeSession)) {
+    activeSession = await refreshHostSession(activeSession);
+  }
+  if (!activeSession?.token) {
+    const err = new Error("Host authentication required.");
+    err.code = "HOST_AUTH_REQUIRED";
+    throw err;
+  }
+  try {
+    return await apiRequest("/v2.7/host/dashboard", {
+      headers: {
+        "x-host-session-token": activeSession.token,
+      },
+    });
+  } catch (err) {
+    if (err?.status === 401 && activeSession?.refreshToken) {
+      const refreshed = await refreshHostSession(activeSession);
+      return await apiRequest("/v2.7/host/dashboard", {
+        headers: {
+          "x-host-session-token": refreshed.token,
+        },
+      });
+    }
+    throw err;
+  }
 }

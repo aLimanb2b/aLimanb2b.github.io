@@ -25,10 +25,11 @@ async function getIdToken() {
   return await user.getIdToken();
 }
 
-export async function apiRequest(path, { method = "GET", query, body, authRequired = true } = {}) {
+export async function apiRequest(path, { method = "GET", query, body, authRequired = true, headers: extraHeaders = {} } = {}) {
   const url = `${API_BASE}${path}${buildQueryString(query)}`;
   const headers = {
     "Content-Type": "application/json",
+    ...extraHeaders,
   };
 
   if (authRequired) {
