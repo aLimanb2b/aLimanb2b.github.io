@@ -126,6 +126,14 @@ export default function SessionDetail() {
     try {
       const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, { authRequired: false });
       setSession(data);
+      setStatsBoard((current) => data?.session_stats ? {
+        ...data.session_stats,
+        current_user_submission: current?.current_user_submission || null,
+        current_user_vote: current?.current_user_vote || null,
+      } : current);
+      if (!nomineeAccountId && Array.isArray(data?.session_stats?.leaderboard) && data.session_stats.leaderboard.length) {
+        setNomineeAccountId(sortNomineesByName(data.session_stats.leaderboard)[0]?.account_id || "");
+      }
       setStatus("");
       return data;
     } catch (error) {
@@ -192,6 +200,50 @@ export default function SessionDetail() {
     }
   }
 
+  async function fetchPlayerActions(targetId) {
+    if (!targetId || !authUser?.uid) {
+      setStatsBoard((current) => current ? {
+        ...current,
+        current_user_submission: null,
+        current_user_vote: null,
+      } : session?.session_stats || null);
+      return null;
+    }
+
+    setStatsLoading(true);
+    setStatsError("");
+    try {
+      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/player-actions`, {
+        query: { account_id: authUser.uid },
+      });
+      setStatsBoard((current) => ({
+        ...(session?.session_stats || current || {}),
+        current_user_submission: data?.current_user_submission || null,
+        current_user_vote: data?.current_user_vote || null,
+      }));
+      const submission = data?.current_user_submission;
+      if (submission && normalizeStatStatus(submission.status) !== "rejected") {
+        setGoalsInput(String(Number(submission.goals || 0)));
+        setAssistsInput(String(Number(submission.assists || 0)));
+        setCleanSheetsInput(String(Number(submission.clean_sheets || 0)));
+      }
+      const vote = data?.current_user_vote;
+      if (vote?.nominee_account_id) {
+        setNomineeAccountId(vote.nominee_account_id);
+      } else if (!nomineeAccountId) {
+        const sourceLeaderboard = session?.session_stats?.leaderboard || statsBoard?.leaderboard || [];
+        if (sourceLeaderboard.length) {
+          setNomineeAccountId(sortNomineesByName(sourceLeaderboard)[0]?.account_id || "");
+        }
+      }
+      return data || null;
+    } catch (error) {
+      return fetchSessionStats(targetId);
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
   useEffect(() => {
     let unsubscribe = null;
     try {
@@ -224,7 +276,7 @@ export default function SessionDetail() {
       return;
     }
     setAccountState(null);
-    setStatsBoard(null);
+    setStatsBoard(session?.session_stats || null);
   }, [authUser?.uid, id]);
 
   useEffect(() => {
@@ -318,31 +370,38 @@ export default function SessionDetail() {
     session?.session_status !== "completed" &&
     hasSpots,
   );
+  const sessionStats = session?.session_stats || statsBoard || null;
   const currentSubmission = statsBoard?.current_user_submission || null;
   const currentSubmissionStatus = normalizeStatStatus(currentSubmission?.status);
   const hasCurrentVote = Boolean(statsBoard?.current_user_vote?.nominee_account_id);
-  const nominees = useMemo(() => sortNomineesByName(statsBoard?.leaderboard || []), [statsBoard]);
+  const nominees = useMemo(() => {
+    const leaderboard = sessionStats?.leaderboard || [];
+    if (leaderboard.length) {
+      return sortNomineesByName(leaderboard);
+    }
+    return sortNomineesByName(sessionStats?.participants || []);
+  }, [sessionStats]);
   const isStatsParticipant = Boolean(
     authUser?.uid &&
       (
-        statsBoard?.participants?.some((player) => player?.id === authUser.uid || player?.account_id === authUser.uid) ||
-        statsBoard?.leaderboard?.some((player) => player?.account_id === authUser.uid || player?.id === authUser.uid)
+        sessionStats?.participants?.some((player) => player?.id === authUser.uid || player?.account_id === authUser.uid) ||
+        sessionStats?.leaderboard?.some((player) => player?.account_id === authUser.uid || player?.id === authUser.uid)
       ),
   );
   const canUseSessionPlayerActions = isRegistered || isStatsParticipant;
   const selectedVoteName = useMemo(() => {
     const selectedId = statsBoard?.current_user_vote?.nominee_account_id || nomineeAccountId;
-    const nominee = nominees.find((player) => player.account_id === selectedId);
+    const nominee = nominees.find((player) => player.account_id === selectedId || player.id === selectedId);
     return nominee ? getDisplayName(nominee) : selectedId;
   }, [nomineeAccountId, nominees, statsBoard?.current_user_vote?.nominee_account_id]);
   const canSubmitStats = Boolean(
     canUseSessionPlayerActions &&
-    statsBoard?.stats_open &&
+    session?.stats_open &&
     (!currentSubmission || currentSubmissionStatus === "rejected"),
   );
   const canVotePlayerOfWeek = Boolean(
     canUseSessionPlayerActions &&
-    statsBoard?.voting_open &&
+    session?.voting_open &&
     !hasCurrentVote &&
     nominees.length,
   );
@@ -353,21 +412,21 @@ export default function SessionDetail() {
     ? `Pending review: ${currentSubmission?.goals ?? 0} goals, ${currentSubmission?.assists ?? 0} assists, ${currentCleanSheets} clean sheets.`
     : currentSubmissionStatus === "rejected"
     ? "Your last submission was rejected. You can submit again."
-    : statsBoard?.stats_open
+    : session?.stats_open
     ? "Enter your goals, assists, and clean sheets for this session."
     : "Stats are closed for this session.";
   const voteDescription = hasCurrentVote
     ? `You voted for ${selectedVoteName || "a registered player"}.`
-    : statsBoard?.voting_open
+    : session?.voting_open
     ? "Choose one registered player. Self-votes are allowed."
     : "Player of the Week voting is closed.";
 
   useEffect(() => {
     if (id && authUser?.uid) {
-      fetchSessionStats(id);
+      fetchPlayerActions(id);
       return;
     }
-    setStatsBoard(null);
+    setStatsBoard(session?.session_stats || null);
     setStatsError("");
     setStatsMessage("");
   }, [authUser?.uid, id]);
@@ -575,7 +634,7 @@ export default function SessionDetail() {
       setStatsError("You need to be registered for this session before submitting stats.");
       return;
     }
-    if (!statsBoard?.stats_open) {
+    if (!session?.stats_open) {
       setStatsError("Stats are not open for this session yet.");
       return;
     }
@@ -601,7 +660,8 @@ export default function SessionDetail() {
         method: "POST",
         body: { goals, assists, clean_sheets: cleanSheets },
       });
-      await fetchSessionStats(id);
+      await loadSession(id);
+      await fetchPlayerActions(id);
       setStatsMessage("Stats submitted. The host will review them.");
       setActiveStatsModal(null);
     } catch (error) {
@@ -620,7 +680,7 @@ export default function SessionDetail() {
       setStatsError("You need to be registered for this session before voting.");
       return;
     }
-    if (!statsBoard?.voting_open) {
+    if (!session?.voting_open) {
       setStatsError("Player of the Week voting is not open right now.");
       return;
     }
@@ -635,7 +695,8 @@ export default function SessionDetail() {
         method: "POST",
         body: { nominee_account_id: nomineeAccountId },
       });
-      await fetchSessionStats(id);
+      await loadSession(id);
+      await fetchPlayerActions(id);
       setStatsMessage("Vote submitted.");
       setActiveStatsModal(null);
     } catch (error) {
@@ -834,7 +895,7 @@ export default function SessionDetail() {
                     className="btn btn-secondary"
                     type="button"
                     disabled={statsLoading}
-                    onClick={() => fetchSessionStats(id)}
+                    onClick={() => fetchPlayerActions(id)}
                   >
                     {statsLoading ? "Refreshing..." : "Refresh"}
                   </button>
@@ -849,7 +910,7 @@ export default function SessionDetail() {
                     <button
                       className="btn btn-primary"
                       type="button"
-                      disabled={statsLoading || !statsBoard}
+                      disabled={!session?.stats_open}
                       onClick={() => setActiveStatsModal("stats")}
                     >
                       {currentSubmissionStatus === "confirmed"
@@ -868,7 +929,7 @@ export default function SessionDetail() {
                     <button
                       className="btn btn-primary"
                       type="button"
-                      disabled={statsLoading || !statsBoard}
+                      disabled={!session?.voting_open || !nominees.length}
                       onClick={() => setActiveStatsModal("vote")}
                     >
                       {hasCurrentVote ? "View Vote" : "Vote"}
@@ -1002,7 +1063,7 @@ export default function SessionDetail() {
                       >
                         {nominees.length ? (
                           nominees.map((player) => (
-                            <option key={player.account_id} value={player.account_id}>
+                            <option key={player.account_id || player.id} value={player.account_id || player.id}>
                               {getDisplayName(player)}
                             </option>
                           ))

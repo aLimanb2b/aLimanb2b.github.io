@@ -115,13 +115,13 @@ export default function Home() {
         <div>
           <p className="site-kicker">Download</p>
           <h2>Get BoxtoBox on your phone</h2>
-          <p>Available now on iOS and Android.</p>
+          <p>Available now on iOS and Android. In Nigeria</p>
         </div>
         <div className="store-badges">
           <a href="https://play.google.com/store/apps/details?id=me.boxtobox.boxtobox&pli=1">
             <img src="/images/GetItOnGooglePlay_Badge_Web_color_English.png" alt="Get it on Google Play" />
           </a>
-          <a href="https://apps.apple.com/gb/app/boxtobox/id6756844810">
+          <a href="https://apps.apple.com/ng/app/boxtobox/id6756844810">
             <img src="/images/Download_on_the_App_Store_Badge_US-UK_RGB_wht_092917.svg" alt="Download on the App Store" />
           </a>
         </div>
