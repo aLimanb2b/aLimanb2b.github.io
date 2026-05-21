@@ -2437,6 +2437,44 @@ section {
     font-weight: 600;
 }
 
+.quick-payment-redirect {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    background: var(--surface);
+    padding: 14px;
+}
+
+.quick-payment-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(11, 11, 15, 0.14);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    flex: 0 0 auto;
+    animation: quick-payment-spin 0.8s linear infinite;
+}
+
+.quick-payment-redirect-title {
+    margin: 0 0 2px;
+    color: var(--text);
+    font-weight: 800;
+}
+
+.quick-payment-redirect-copy {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+@keyframes quick-payment-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .event-app-links {
     display: flex;
     flex-wrap: wrap;
