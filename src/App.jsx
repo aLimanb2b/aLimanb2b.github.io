@@ -35,6 +35,7 @@ export default function App() {
           <Route path="/event/:id/check-in" element={<CheckInPass />} />
           <Route path="/event" element={<EventDetail />} />
           <Route path="/sessions" element={<Sessions />} />
+          <Route path="/session/:id/pay" element={<SessionDetail quickPay />} />
           <Route path="/session/:id" element={<SessionDetail />} />
           <Route path="/support" element={<Support />} />
           <Route path="/host" element={<HostInfo />} />

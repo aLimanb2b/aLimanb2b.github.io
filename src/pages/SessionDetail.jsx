@@ -67,7 +67,7 @@ function RegisteredUserCard({ user, actionLabel = "", onAction = null, actionDis
   );
 }
 
-export default function SessionDetail() {
+export default function SessionDetail({ quickPay = false }) {
   function parseDateValue(value) {
     if (!value) {
       return null;
@@ -91,6 +91,7 @@ export default function SessionDetail() {
   const [authUser, setAuthUser] = useState(() => safeGetAuthUser());
   const [accountState, setAccountState] = useState(null);
   const [accountLoading, setAccountLoading] = useState(false);
+  const [accountStateLoaded, setAccountStateLoaded] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
@@ -115,6 +116,8 @@ export default function SessionDetail() {
   const [nomineeAccountId, setNomineeAccountId] = useState("");
   const [activeStatsModal, setActiveStatsModal] = useState(null);
   const autoVerifyKeyRef = useRef("");
+  const quickPayAuthPromptRef = useRef(false);
+  const quickPayStartedRef = useRef("");
 
   async function loadSession(targetId) {
     if (!targetId) {
@@ -123,6 +126,7 @@ export default function SessionDetail() {
       return null;
     }
     setStatus("Loading session...");
+    setAccountStateLoaded(false);
     try {
       const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, { authRequired: false });
       setSession(data);
@@ -147,10 +151,12 @@ export default function SessionDetail() {
     const accountId = explicitAccountId || authUser?.uid || "";
     if (!accountId || !targetId) {
       setAccountState(null);
+      setAccountStateLoaded(false);
       return null;
     }
 
     setAccountLoading(true);
+    setAccountStateLoaded(false);
     try {
       const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}/account_states`, {
         query: { account_id: accountId },
@@ -161,6 +167,7 @@ export default function SessionDetail() {
       setAccountState(null);
       return null;
     } finally {
+      setAccountStateLoaded(true);
       setAccountLoading(false);
     }
   }
@@ -276,6 +283,7 @@ export default function SessionDetail() {
       return;
     }
     setAccountState(null);
+    setAccountStateLoaded(false);
     setStatsBoard(session?.session_stats || null);
   }, [authUser?.uid, id]);
 
@@ -364,6 +372,13 @@ export default function SessionDetail() {
     ["pending", "processing", "initiated", "otp_sent"].includes(paymentStatus);
   const registrationDeadline = parseDateValue(accountState?.registration_deadline || session?.registration_deadline);
   const deadlineHasPassed = Boolean(registrationDeadline && registrationDeadline.getTime() < Date.now());
+  const sessionIsInactiveForPayment = Boolean(
+    session?.deleted_at ||
+      session?.archived_at ||
+      session?.session_status === "completed" ||
+      !registrationOpen ||
+      deadlineHasPassed,
+  );
   const sessionEligibleForAutoVerify = Boolean(
     registrationOpen &&
     !deadlineHasPassed &&
@@ -513,8 +528,8 @@ export default function SessionDetail() {
     sessionEligibleForAutoVerify,
   ]);
 
-  const openAuthModal = (mode = "signin") => {
-    window.dispatchEvent(new CustomEvent("auth:open", { detail: { mode } }));
+  const openAuthModal = (mode = "signin", options = {}) => {
+    window.dispatchEvent(new CustomEvent("auth:open", { detail: { mode, ...options } }));
   };
 
   const buildPaystackCallbackUrl = () => {
@@ -550,7 +565,7 @@ export default function SessionDetail() {
     }
   };
 
-  const handlePayClick = async () => {
+  const startPaystackPayment = async ({ quickLink = false } = {}) => {
     setActionError("");
     setActionMessage("");
     if (!id || !session) {
@@ -560,7 +575,7 @@ export default function SessionDetail() {
     const user = authUser;
     const accountId = user?.uid || "";
     if (!accountId) {
-      openAuthModal("signin");
+      openAuthModal("signin", quickLink ? { signInOnly: true } : {});
       return;
     }
     if (!user?.email) {
@@ -570,14 +585,16 @@ export default function SessionDetail() {
 
     try {
       setPaymentLoading(true);
-      const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/payment/paystack/initialize`, {
+      const result = await apiRequest(`/v${quickLink ? "2.6" : "2.5"}/session/${encodeURIComponent(id)}/payment/paystack/initialize`, {
         method: "POST",
-        authRequired: false,
-        body: {
-          account_id: accountId,
-          email: user.email,
-          callback_url: buildPaystackCallbackUrl(),
-        },
+        authRequired: quickLink,
+        body: quickLink
+          ? { callback_url: buildPaystackCallbackUrl() }
+          : {
+              account_id: accountId,
+              email: user.email,
+              callback_url: buildPaystackCallbackUrl(),
+            },
       });
 
       if (!result?.authorization_url) {
@@ -590,6 +607,91 @@ export default function SessionDetail() {
       setPaymentLoading(false);
     }
   };
+
+  const handlePayClick = async () => {
+    await startPaystackPayment();
+  };
+
+  useEffect(() => {
+    if (!quickPay) {
+      return;
+    }
+    if (searchParams.get("paystack") === "return") {
+      return;
+    }
+    if (!id || !session) {
+      return;
+    }
+
+    if (sessionIsInactiveForPayment) {
+      setActionError("");
+      setActionMessage("This session is not active for payment.");
+      return;
+    }
+    if (!paid) {
+      setActionError("");
+      setActionMessage("This session does not require payment.");
+      return;
+    }
+
+    const accountId = authUser?.uid || "";
+    if (!accountId) {
+      if (!quickPayAuthPromptRef.current) {
+        quickPayAuthPromptRef.current = true;
+        setActionError("");
+        setActionMessage("Sign in to continue to payment.");
+        openAuthModal("signin", { signInOnly: true });
+      }
+      return;
+    }
+
+    if (!accountStateLoaded) {
+      return;
+    }
+    if (isPaid || isRegistered) {
+      setActionError("");
+      setActionMessage(isPaid ? "Payment has already been completed." : "You are already registered for this session.");
+      return;
+    }
+    if (hasPendingPayment) {
+      setActionError("");
+      setActionMessage("Payment is already in progress for this session.");
+      return;
+    }
+    if (!hasSpots && !isReservedForUser) {
+      setActionError("");
+      setActionMessage("No spots remaining for this session.");
+      return;
+    }
+    if (!authUser?.email) {
+      setActionError("A verified email is required before starting payment.");
+      setActionMessage("");
+      return;
+    }
+
+    const quickPayKey = `${id}:${accountId}`;
+    if (quickPayStartedRef.current === quickPayKey || paymentLoading) {
+      return;
+    }
+    quickPayStartedRef.current = quickPayKey;
+    startPaystackPayment({ quickLink: true });
+  }, [
+    accountStateLoaded,
+    authUser?.email,
+    authUser?.uid,
+    hasPendingPayment,
+    hasSpots,
+    id,
+    isPaid,
+    isRegistered,
+    isReservedForUser,
+    paid,
+    paymentLoading,
+    quickPay,
+    searchParams,
+    session,
+    sessionIsInactiveForPayment,
+  ]);
 
   const handleReserveUser = async () => {
     setHostActionError("");
@@ -819,7 +921,7 @@ export default function SessionDetail() {
                   <button
                     className="btn btn-primary"
                     type="button"
-                    disabled={paymentLoading || isPaid || hasPendingPayment || !registrationOpen || (!hasSpots && !isReservedForUser)}
+                    disabled={paymentLoading || isPaid || hasPendingPayment || sessionIsInactiveForPayment || (!hasSpots && !isReservedForUser)}
                     onClick={handlePayClick}
                   >
                     {isPaid
@@ -828,7 +930,7 @@ export default function SessionDetail() {
                       ? "Processing..."
                       : hasPendingPayment
                       ? "Payment being confirmed"
-                      : !registrationOpen
+                      : sessionIsInactiveForPayment
                       ? "Registration closed"
                       : !hasSpots && !isReservedForUser
                       ? "Sold out"

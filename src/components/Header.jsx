@@ -13,6 +13,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("signin");
+  const [authSignInOnly, setAuthSignInOnly] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [formValues, setFormValues] = useState({
@@ -70,7 +71,9 @@ export default function Header() {
 
   useEffect(() => {
     const handleAuthOpen = (event) => {
-      const requestedMode = event?.detail?.mode === "register" ? "register" : "signin";
+      const signInOnly = Boolean(event?.detail?.signInOnly);
+      const requestedMode = !signInOnly && event?.detail?.mode === "register" ? "register" : "signin";
+      setAuthSignInOnly(signInOnly);
       setAuthMode(requestedMode);
       setAuthOpen(true);
       setMenuOpen(false);
@@ -184,6 +187,7 @@ export default function Header() {
                   role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
+                    setAuthSignInOnly(false);
                     setAuthMode("signin");
                     setAuthOpen(true);
                   }}
@@ -196,6 +200,7 @@ export default function Header() {
                   role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
+                    setAuthSignInOnly(false);
                     setAuthMode("register");
                     setAuthOpen(true);
                   }}
@@ -269,13 +274,15 @@ export default function Header() {
               >
                 Sign In
               </button>
-              <button
-                type="button"
-                className={`auth-tab${authMode === "register" ? " active" : ""}`}
-                onClick={() => setAuthMode("register")}
-              >
-                Register
-              </button>
+              {!authSignInOnly && (
+                <button
+                  type="button"
+                  className={`auth-tab${authMode === "register" ? " active" : ""}`}
+                  onClick={() => setAuthMode("register")}
+                >
+                  Register
+                </button>
+              )}
             </div>
 
             {authError && <div className="auth-error">{authError}</div>}
