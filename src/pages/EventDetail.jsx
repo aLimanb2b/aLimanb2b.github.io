@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useParams, useSearchParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api.js";
 import { getAuthUser, observeAuthState } from "../lib/auth.js";
 
@@ -393,6 +393,7 @@ function formatGroupStat(value) {
 
 export default function EventDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const eventId = id || searchParams.get("id");
   const [event, setEvent] = useState(null);
@@ -407,6 +408,9 @@ export default function EventDetail() {
   const [accountState, setAccountState] = useState(null);
   const [accountLoading, setAccountLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+  const [checkInError, setCheckInError] = useState("");
+  const [checkInMessage, setCheckInMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [groupStageState, setGroupStageState] = useState({
@@ -598,6 +602,8 @@ export default function EventDetail() {
   const registrationOpen = event?.registration_open !== false;
   const remaining = Number(event?.remaining_places ?? event?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
+  const isRegisteredForCheckIn = Boolean(accountState?.register);
+  const canGenerateCheckInPass = isRegisteredForCheckIn && (!paymentRequired || isPaid);
 
   async function fetchAccountState(targetId, explicitAccountId) {
     const accountId = explicitAccountId || safeGetAuthUser()?.uid || "";
@@ -824,6 +830,60 @@ export default function EventDetail() {
     }
   };
 
+  const handleCheckInClick = async () => {
+    setCheckInError("");
+    setCheckInMessage("");
+    if (!eventId || !event) {
+      return;
+    }
+
+    const accountId = authUser?.uid || "";
+    if (!accountId) {
+      openAuthModal("signin");
+      return;
+    }
+    if (!canGenerateCheckInPass) {
+      return;
+    }
+
+    try {
+      setCheckInLoading(true);
+      const result = await apiRequest(`/v1.5/event/${encodeURIComponent(eventId)}/checkin/token`, {
+        method: "POST",
+        authRequired: false,
+        body: { account_id: accountId },
+      });
+
+      if (result?.status === "used") {
+        setCheckInMessage("This event pass has already been verified.");
+        return;
+      }
+
+      const token = String(result?.token || "").trim();
+      if (!token) {
+        throw new Error("Unable to generate your event pass right now.");
+      }
+
+      const passParams = new URLSearchParams();
+      passParams.set("token", token);
+      if (result?.expires_at) {
+        passParams.set("expiresAt", result.expires_at);
+      }
+      if (event?.title) {
+        passParams.set("title", event.title);
+      }
+
+      navigate({
+        pathname: `/event/${encodeURIComponent(eventId)}/check-in`,
+        search: `?${passParams.toString()}`,
+      });
+    } catch (error) {
+      setCheckInError(error?.message || "Unable to generate your event pass right now.");
+    } finally {
+      setCheckInLoading(false);
+    }
+  };
+
   return (
     <section className="event-detail">
       <div className="event-detail-card">
@@ -922,6 +982,28 @@ export default function EventDetail() {
                 </p>
               ) : null}
             </div>
+            {canGenerateCheckInPass ? (
+              <div className="event-detail-actions">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Event verification</p>
+                    <p className="event-action-subtitle">
+                      Generate your QR pass for host check-in.
+                    </p>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={checkInLoading}
+                    onClick={handleCheckInClick}
+                  >
+                    {checkInLoading ? "Generating..." : "Show verification QR"}
+                  </button>
+                </div>
+                {checkInError ? <p className="event-action-error">{checkInError}</p> : null}
+                {checkInMessage ? <p className="event-action-success">{checkInMessage}</p> : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
