@@ -94,15 +94,6 @@ export default function SessionDetail() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-  const [hostActionLoading, setHostActionLoading] = useState(false);
-  const [hostActionError, setHostActionError] = useState("");
-  const [hostActionMessage, setHostActionMessage] = useState("");
-  const [hostReconcileLoading, setHostReconcileLoading] = useState(false);
-  const [hostReconcileError, setHostReconcileError] = useState("");
-  const [hostReconcileMessage, setHostReconcileMessage] = useState("");
-  const [hostReconcileSummary, setHostReconcileSummary] = useState(null);
-  const [hostTargetAccountId, setHostTargetAccountId] = useState("");
-  const [hostTargetEmail, setHostTargetEmail] = useState("");
   const [statsBoard, setStatsBoard] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsSubmitting, setStatsSubmitting] = useState(false);
@@ -334,10 +325,6 @@ export default function SessionDetail() {
   }, [authUser?.uid, id, searchParams, setSearchParams]);
 
   const registeredUsers = useMemo(() => getRegisteredUsers(session), [session]);
-  const reservedUsers = useMemo(
-    () => registeredUsers.filter((user) => String(user?.registration_status || "").toLowerCase() === "reserved"),
-    [registeredUsers],
-  );
   const rules = useMemo(
     () => (Array.isArray(session?.rules) ? session.rules.filter((rule) => String(rule || "").trim()) : []),
     [session],
@@ -356,7 +343,6 @@ export default function SessionDetail() {
   );
   const isRegistered = Boolean(accountState?.register) || isRegisteredInRoster;
   const isReservedForUser = Boolean(accountState?.reserved_by_host) || String(accountState?.reservation_status || "").toLowerCase() === "reserved";
-  const isHost = Boolean(authUser?.uid) && authUser.uid === session?.host_id;
   const registrationOpen = session?.registration_open !== false;
   const remaining = Number(session?.remaining_places ?? session?.available_places ?? 0);
   const hasSpots = !Number.isFinite(remaining) || remaining > 0;
@@ -598,40 +584,6 @@ export default function SessionDetail() {
     }
   };
 
-  const handleReserveUser = async () => {
-    setHostActionError("");
-    setHostActionMessage("");
-    if (!id || !session || !isHost) {
-      return;
-    }
-
-    const accountId = hostTargetAccountId.trim();
-    const email = hostTargetEmail.trim();
-    if ((accountId && email) || (!accountId && !email)) {
-      setHostActionError("Enter either an account ID or an existing email.");
-      return;
-    }
-
-    try {
-      setHostActionLoading(true);
-      await apiRequest(`/v2/session/${encodeURIComponent(id)}/registration/reserve-user`, {
-        method: "POST",
-        body: {
-          host_id: authUser.uid,
-          ...(accountId ? { account_id: accountId } : { email }),
-        },
-      });
-      await Promise.all([loadSession(id), fetchAccountState(id, authUser.uid)]);
-      setHostTargetAccountId("");
-      setHostTargetEmail("");
-      setHostActionMessage("Reserved spot saved.");
-    } catch (error) {
-      setHostActionError(error?.message || "Unable to reserve a spot right now.");
-    } finally {
-      setHostActionLoading(false);
-    }
-  };
-
   const handleSubmitStats = async (event) => {
     event.preventDefault();
     setStatsError("");
@@ -710,55 +662,6 @@ export default function SessionDetail() {
       setStatsError(error?.message || "Unable to submit your vote right now.");
     } finally {
       setVoteSubmitting(false);
-    }
-  };
-
-  const handleCancelReservedUser = async (targetAccountId) => {
-    setHostActionError("");
-    setHostActionMessage("");
-    if (!id || !session || !isHost || !targetAccountId) {
-      return;
-    }
-
-    try {
-      setHostActionLoading(true);
-      await apiRequest(`/v2/session/${encodeURIComponent(id)}/registration/cancel-reserved-user`, {
-        method: "POST",
-        body: {
-          host_id: authUser.uid,
-          account_id: targetAccountId,
-        },
-      });
-      await Promise.all([loadSession(id), fetchAccountState(id, authUser.uid)]);
-      setHostActionMessage("Reserved spot cancelled.");
-    } catch (error) {
-      setHostActionError(error?.message || "Unable to cancel the reserved spot right now.");
-    } finally {
-      setHostActionLoading(false);
-    }
-  };
-
-  const handleReconcilePayments = async () => {
-    setHostReconcileError("");
-    setHostReconcileMessage("");
-    setHostReconcileSummary(null);
-    if (!id || !session || !isHost) {
-      return;
-    }
-
-    try {
-      setHostReconcileLoading(true);
-      const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/payment/paystack/reconcile`, {
-        method: "POST",
-        body: { host_id: authUser.uid },
-      });
-      await Promise.all([loadSession(id), fetchAccountState(id, authUser.uid)]);
-      setHostReconcileSummary(result || null);
-      setHostReconcileMessage("Session payments reconciled.");
-    } catch (error) {
-      setHostReconcileError(error?.message || "Unable to reconcile session payments right now.");
-    } finally {
-      setHostReconcileLoading(false);
     }
   };
 
@@ -1088,98 +991,6 @@ export default function SessionDetail() {
                     </button>
                   </form>
                 </div>
-              </div>
-            ) : null}
-
-            {isHost ? (
-              <div className="event-detail-actions">
-                <div className="event-action-row">
-                  <div>
-                    <p className="event-action-title">Reserve a user spot</p>
-                    <p className="event-action-subtitle">Use an existing account ID or email. Enter only one.</p>
-                  </div>
-                </div>
-                <div className="host-reserve-form">
-                  <label className="payment-field">
-                    Account ID
-                    <input
-                      type="text"
-                      value={hostTargetAccountId}
-                      placeholder="user-123"
-                      onChange={(event) => setHostTargetAccountId(event.target.value)}
-                    />
-                  </label>
-                  <label className="payment-field">
-                    Existing Email
-                    <input
-                      type="email"
-                      value={hostTargetEmail}
-                      placeholder="player@example.com"
-                      onChange={(event) => setHostTargetEmail(event.target.value)}
-                    />
-                  </label>
-                </div>
-                <div className="event-action-row">
-                  <p className="event-action-note">
-                    Named reservations immediately occupy a session spot and show publicly as reserved until claimed.
-                  </p>
-                  <button
-                    className="btn btn-secondary"
-                    type="button"
-                    disabled={hostActionLoading}
-                    onClick={handleReserveUser}
-                  >
-                    {hostActionLoading ? "Saving..." : "Reserve spot"}
-                  </button>
-                </div>
-                {hostActionError ? <p className="event-action-error">{hostActionError}</p> : null}
-                {hostActionMessage ? <p className="event-action-success">{hostActionMessage}</p> : null}
-                {reservedUsers.length ? (
-                  <div className="host-reserve-list">
-                    <p className="event-action-title">Reserved users</p>
-                    <ul className="session-users-grid">
-                      {reservedUsers.map((user) => (
-                        <RegisteredUserCard
-                          key={user.id}
-                          user={user}
-                          actionLabel="Cancel"
-                          actionDisabled={hostActionLoading}
-                          onAction={() => handleCancelReservedUser(user.id)}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {isHost ? (
-              <div className="event-detail-actions">
-                <div className="event-action-row">
-                  <div>
-                    <p className="event-action-title">Reconcile session payments</p>
-                    <p className="event-action-subtitle">Fallback tool for pending or incomplete Paystack payments that were not finalized automatically.</p>
-                  </div>
-                  <button
-                    className="btn btn-secondary"
-                    type="button"
-                    disabled={hostReconcileLoading}
-                    onClick={handleReconcilePayments}
-                  >
-                    {hostReconcileLoading ? "Reconciling..." : "Reconcile payments"}
-                  </button>
-                </div>
-                {hostReconcileError ? <p className="event-action-error">{hostReconcileError}</p> : null}
-                {hostReconcileMessage ? <p className="event-action-success">{hostReconcileMessage}</p> : null}
-                {hostReconcileSummary ? (
-                  <ul className="session-reconcile-summary">
-                    <li>Paid and registered: {hostReconcileSummary.paid_and_registered ?? 0}</li>
-                    <li>Still pending: {hostReconcileSummary.still_pending ?? 0}</li>
-                    <li>Failed: {hostReconcileSummary.failed ?? 0}</li>
-                    <li>Skipped: {hostReconcileSummary.skipped ?? 0}</li>
-                    <li>Errors: {hostReconcileSummary.errors ?? 0}</li>
-                  </ul>
-                ) : null}
               </div>
             ) : null}
 

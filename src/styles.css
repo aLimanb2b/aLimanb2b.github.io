@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,600,1,0&family=Space+Grotesk:wght@500;600;700;800&display=swap");
 
 :root {
     --bg: #ffffff;
@@ -823,7 +823,7 @@ section {
 
 .host-detail-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     border-top: 1px solid #0b0b0f;
     border-left: 1px solid #0b0b0f;
 }
@@ -838,13 +838,296 @@ section {
     border-radius: 8px;
     padding: 18px;
     display: grid;
-    gap: 8px;
+    gap: 18px;
 }
 
 .host-tools-panel h3 {
     margin: 0;
     font-size: 24px;
     letter-spacing: 0;
+}
+
+.host-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.host-tool-tile {
+    min-height: 176px;
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0b0b0f;
+    cursor: pointer;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 10px;
+    padding: 18px 14px;
+    text-align: center;
+}
+
+.host-tool-tile:hover,
+.host-tool-tile:focus-visible {
+    background: #f7f7f7;
+    outline: 2px solid #0b0b0f;
+    outline-offset: 2px;
+}
+
+.host-tool-tile.disabled,
+.host-tool-tile:disabled {
+    cursor: not-allowed;
+    color: #8b9098;
+    background: #f1f1f1;
+    border-color: #c7cbd1;
+}
+
+.host-tool-tile.disabled .host-tool-icon-shell,
+.host-tool-tile:disabled .host-tool-icon-shell {
+    color: #8b9098;
+    border-color: #c7cbd1;
+    background: #e6e8eb;
+}
+
+.host-tool-tile.disabled:hover,
+.host-tool-tile:disabled:hover,
+.host-tool-tile.disabled:focus-visible,
+.host-tool-tile:disabled:focus-visible {
+    outline: 0;
+}
+
+.host-tool-icon-shell {
+    width: 92px;
+    height: 92px;
+    border: 1px solid #0b0b0f;
+    border-radius: 50%;
+    background: #f7f7f7;
+    color: #0b0b0f;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.host-tool-icon {
+    font-size: 52px;
+    line-height: 1;
+    color: currentColor;
+    font-variation-settings: "FILL" 1, "wght" 600, "GRAD" 0, "opsz" 48;
+}
+
+.host-tool-title {
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.host-tool-description {
+    color: #646a73;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.host-tool-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(11, 11, 15, 0.52);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.host-tool-modal {
+    width: min(680px, 100%);
+    max-height: min(760px, calc(100vh - 40px));
+    overflow: auto;
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0b0b0f;
+    padding: clamp(18px, 4vw, 28px);
+    display: grid;
+    gap: 18px;
+}
+
+.host-tool-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.host-tool-modal-header h3 {
+    margin: 4px 0 0;
+}
+
+.host-tool-modal-close {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #0b0b0f;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #0b0b0f;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.host-tool-modal-close:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.host-tool-modal-body {
+    display: grid;
+    gap: 14px;
+}
+
+.host-tool-modal-actions,
+.host-stats-review-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.host-stats-review-list,
+.host-doubles-team-list {
+    display: grid;
+    gap: 10px;
+}
+
+.host-stats-review-row,
+.host-doubles-team {
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.host-stats-review-row h4,
+.host-stats-review-row p {
+    margin: 0;
+}
+
+.host-stats-review-row h4 {
+    margin-bottom: 4px;
+}
+
+.host-stats-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.host-tool-status {
+    display: inline-flex;
+    margin-top: 8px;
+    border: 1px solid #0b0b0f;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.host-tool-status.confirmed {
+    background: #d7f8e6;
+}
+
+.host-tool-status.rejected {
+    background: #ffe2e2;
+}
+
+.host-tool-status.pending {
+    background: #fff4d7;
+}
+
+.host-doubles-team {
+    display: grid;
+    gap: 4px;
+}
+
+.host-doubles-team span {
+    color: #646a73;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.host-doubles-team.unpaired {
+    background: #f7f7f7;
+}
+
+.host-reserved-users {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.host-reserved-user-card {
+    border: 1px solid #0b0b0f;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.host-reserved-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #0b0b0f;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.host-reserved-copy {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+    flex: 1;
+}
+
+.host-reserved-copy h4,
+.host-reserved-copy p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.host-reserved-copy p {
+    color: #646a73;
+    font-size: 14px;
+}
+
+.host-reserved-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.host-tools-empty {
+    border: 1px dashed #9ba0a8;
+    border-radius: 8px;
+    padding: 14px;
+    color: #646a73;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
 }
 
 @media (max-width: 900px) {
@@ -886,6 +1169,21 @@ section {
 
     .host-detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .host-reserved-meta {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .host-tool-modal-actions,
+    .host-stats-review-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .host-stats-review-actions {
+        justify-content: flex-start;
     }
 
     .host-metric {
@@ -2094,16 +2392,6 @@ section {
 .session-payment-attention {
     border-left: 4px solid #bf7100;
     padding-left: 12px;
-}
-
-.session-reconcile-summary {
-    margin: 14px 0 0 0;
-    padding-left: 20px;
-    color: var(--muted);
-}
-
-.session-reconcile-summary li + li {
-    margin-top: 6px;
 }
 
 .session-users-empty {
@@ -4103,8 +4391,7 @@ section {
 .sessions-grid,
 .event-detail-grid,
 .session-users-grid,
-.host-reserve-list,
-.session-reconcile-summary {
+.host-reserve-list {
     max-width: 1180px;
     margin-left: auto;
     margin-right: auto;
