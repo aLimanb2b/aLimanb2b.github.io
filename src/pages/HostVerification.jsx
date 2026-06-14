@@ -11,6 +11,7 @@ const INITIAL_FORM = {
   lastName: "",
   email: "",
   phoneNumber: "",
+  bankName: "",
   bankAccountNumber: "",
   ninFile: null,
 };
@@ -54,8 +55,8 @@ function validateStep(step, form) {
     if (form.ninFile.size > MAX_NIN_FILE_SIZE) {
       return "NIN document must be 5 MB or smaller.";
     }
-    if (!form.bankAccountNumber.trim()) {
-      return "Enter the bank account number for payments.";
+    if (!form.bankName.trim() || !form.bankAccountNumber.trim()) {
+      return "Enter the bank name and account number for payments.";
     }
   }
   return "";
@@ -155,6 +156,7 @@ export default function HostVerification() {
           last_name: form.lastName.trim(),
           email: form.email.trim(),
           phone_number: form.phoneNumber.trim(),
+          bank_name: form.bankName.trim(),
           bank_account_number: form.bankAccountNumber.trim(),
           nin_file: {
             file_name: form.ninFile.name,
@@ -292,6 +294,10 @@ export default function HostVerification() {
               <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={updateFile} />
             </label>
             <label>
+              Bank name
+              <input type="text" value={form.bankName} onChange={updateField("bankName")} autoComplete="organization" />
+            </label>
+            <label>
               Bank account number
               <input type="text" inputMode="numeric" value={form.bankAccountNumber} onChange={updateField("bankAccountNumber")} />
             </label>
@@ -312,6 +318,10 @@ export default function HostVerification() {
             <div>
               <span>Phone</span>
               <strong>{form.phoneNumber}</strong>
+            </div>
+            <div>
+              <span>Bank name</span>
+              <strong>{form.bankName}</strong>
             </div>
             <div>
               <span>Bank account</span>
