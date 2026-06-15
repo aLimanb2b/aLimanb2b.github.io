@@ -22,6 +22,39 @@ function normalizeStatStatus(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function formatMoneyAmount(amount, currency = "NGN") {
+  const numericAmount = Number(amount || 0);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return "Free";
+  }
+
+  const resolvedCurrency = typeof currency === "string" && currency.trim()
+    ? currency.trim().toUpperCase()
+    : "NGN";
+
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: resolvedCurrency,
+      maximumFractionDigits: numericAmount % 1 === 0 ? 0 : 2,
+    }).format(numericAmount);
+  } catch (error) {
+    return `${resolvedCurrency} ${numericAmount}`;
+  }
+}
+
+function formatMembershipPrice(session) {
+  return formatMoneyAmount(session?.membership_fee, session?.membership_currency || session?.currency);
+}
+
+function formatMembershipDuration(value) {
+  const days = Number(value || 0);
+  if (!Number.isFinite(days) || days <= 0) {
+    return "Duration TBD";
+  }
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
 function getDisplayName(player) {
   return player?.name || player?.account_id || player?.id || "Registered player";
 }
@@ -92,6 +125,10 @@ export default function SessionDetail() {
   const [accountState, setAccountState] = useState(null);
   const [accountLoading, setAccountLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [membershipModalOpen, setMembershipModalOpen] = useState(false);
+  const [membershipPaymentLoading, setMembershipPaymentLoading] = useState(false);
+  const [membershipError, setMembershipError] = useState("");
+  const [membershipMessage, setMembershipMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [statsBoard, setStatsBoard] = useState(null);
@@ -276,9 +313,10 @@ export default function SessionDetail() {
 
   useEffect(() => {
     const paystackReturn = searchParams.get("paystack");
+    const paymentFlow = searchParams.get("payment") || "session";
     const reference = searchParams.get("reference") || searchParams.get("trxref");
     const accountId = authUser?.uid || "";
-    if (paystackReturn !== "return" || !reference || !id || !accountId) {
+    if (paystackReturn !== "return" || paymentFlow === "membership" || !reference || !id || !accountId) {
       return;
     }
 
@@ -338,6 +376,12 @@ export default function SessionDetail() {
   const paid = isPaidSession(session || {});
   const paymentStatus = String(accountState?.payment_status || "").toLowerCase();
   const isPaid = Boolean(accountState?.paid) || ["paid", "success", "successful", "completed", "complete"].includes(paymentStatus);
+  const membershipRequired = Boolean(session?.membership_required || accountState?.membership_required);
+  const membershipStatus = String(accountState?.membership_status || "").toLowerCase();
+  const membershipActive = Boolean(accountState?.membership_active) || membershipStatus === "active";
+  const membershipPrice = formatMembershipPrice(session || {});
+  const membershipDuration = formatMembershipDuration(session?.membership_period_days);
+  const showMembershipOption = membershipRequired && !membershipActive;
   const isRegisteredInRoster = Boolean(
     authUser?.uid &&
       registeredUsers.some((user) => {
@@ -510,6 +554,55 @@ export default function SessionDetail() {
     sessionEligibleForAutoVerify,
   ]);
 
+  useEffect(() => {
+    const paystackReturn = searchParams.get("paystack");
+    const paymentFlow = searchParams.get("payment");
+    const reference = searchParams.get("reference") || searchParams.get("trxref");
+    const accountId = authUser?.uid || "";
+    if (paystackReturn !== "return" || paymentFlow !== "membership" || !reference || !id || !accountId) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function verifyReturnedMembershipPayment() {
+      setMembershipPaymentLoading(true);
+      setMembershipError("");
+      setMembershipMessage("Verifying membership payment...");
+      try {
+        const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/membership/paystack/verify`, {
+          method: "POST",
+          body: { reference, account_id: accountId },
+        });
+        if (!isActive) {
+          return;
+        }
+        await Promise.all([loadSession(id), fetchAccountState(id, accountId)]);
+        const membershipEndAt = result?.membership_end_at ? formatSessionDate(result.membership_end_at) : "";
+        setMembershipMessage(
+          membershipEndAt
+            ? `Membership confirmed. Active until ${membershipEndAt}.`
+            : result?.message || "Membership confirmed.",
+        );
+        setSearchParams({}, { replace: true });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        setMembershipError(error?.message || "Unable to verify your membership payment right now.");
+      } finally {
+        if (isActive) {
+          setMembershipPaymentLoading(false);
+        }
+      }
+    }
+
+    verifyReturnedMembershipPayment();
+    return () => {
+      isActive = false;
+    };
+  }, [authUser?.uid, id, searchParams, setSearchParams]);
+
   const openAuthModal = (mode = "signin", options = {}) => {
     window.dispatchEvent(new CustomEvent("auth:open", { detail: { mode, ...options } }));
   };
@@ -517,6 +610,57 @@ export default function SessionDetail() {
   const buildPaystackCallbackUrl = () => {
     const hashPath = (window.location.hash || `#/session/${encodeURIComponent(id)}`).split("?")[0];
     return `${window.location.origin}${window.location.pathname}${hashPath}?paystack=return`;
+  };
+
+  const buildMembershipPaystackCallbackUrl = () => {
+    const hashPath = (window.location.hash || `#/session/${encodeURIComponent(id)}`).split("?")[0];
+    return `${window.location.origin}${window.location.pathname}${hashPath}?paystack=return&payment=membership`;
+  };
+
+  const handleOpenMembershipModal = () => {
+    setMembershipError("");
+    setMembershipMessage("");
+    setMembershipModalOpen(true);
+  };
+
+  const handleMembershipPayClick = async () => {
+    setMembershipError("");
+    setMembershipMessage("");
+    if (!id || !session) {
+      return;
+    }
+
+    const user = authUser;
+    const accountId = user?.uid || "";
+    if (!accountId) {
+      openAuthModal("signin");
+      return;
+    }
+    if (!user?.email) {
+      setMembershipError("A verified email is required before starting membership payment.");
+      return;
+    }
+
+    try {
+      setMembershipPaymentLoading(true);
+      const result = await apiRequest(`/v2.5/session/${encodeURIComponent(id)}/membership/paystack/initialize`, {
+        method: "POST",
+        body: {
+          account_id: accountId,
+          email: user.email,
+          callback_url: buildMembershipPaystackCallbackUrl(),
+        },
+      });
+
+      if (!result?.authorization_url) {
+        throw new Error("Unable to start Paystack checkout right now.");
+      }
+
+      window.location.assign(result.authorization_url);
+    } catch (error) {
+      setMembershipError(error?.message || "Unable to start membership payment right now.");
+      setMembershipPaymentLoading(false);
+    }
   };
 
   const handleRegisterClick = async () => {
@@ -721,6 +865,34 @@ export default function SessionDetail() {
               </p>
             </div>
 
+            {showMembershipOption ? (
+              <div className="event-detail-actions session-membership-action">
+                <div className="event-action-row">
+                  <div>
+                    <p className="event-action-title">Become a member</p>
+                    <p className="event-action-subtitle">
+                      Membership required for this session: {membershipPrice} for {membershipDuration}.
+                    </p>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={membershipPaymentLoading}
+                    onClick={handleOpenMembershipModal}
+                  >
+                    {membershipPaymentLoading ? "Processing..." : "Become a member"}
+                  </button>
+                </div>
+                {membershipError ? <p className="event-action-error">{membershipError}</p> : null}
+                {membershipMessage ? <p className="event-action-success">{membershipMessage}</p> : null}
+                {!authUser ? (
+                  <p className="event-action-note">Sign in to buy this membership before joining the session.</p>
+                ) : (
+                  <p className="event-action-note">Membership checkout is processed securely with Paystack.</p>
+                )}
+              </div>
+            ) : null}
+
             <div className="event-detail-actions">
               <div className="event-action-row">
                 <div>
@@ -795,6 +967,60 @@ export default function SessionDetail() {
                 </p>
               ) : null}
             </div>
+
+            {membershipModalOpen ? (
+              <div className="session-action-modal-overlay" role="presentation" onClick={() => setMembershipModalOpen(false)}>
+                <div
+                  className="session-action-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="membership-payment-title"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="session-action-modal-header">
+                    <div>
+                      <p className="payment-eyebrow">Membership</p>
+                      <h2 id="membership-payment-title">Become a Member</h2>
+                    </div>
+                    <button
+                      className="payment-close"
+                      type="button"
+                      aria-label="Close membership payment"
+                      onClick={() => setMembershipModalOpen(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <p className="event-action-subtitle">
+                    Buy the membership required for {session.title || "this session"}.
+                  </p>
+                  <div className="membership-modal-details">
+                    <div>
+                      <p className="label">Price</p>
+                      <p>{membershipPrice}</p>
+                    </div>
+                    <div>
+                      <p className="label">Duration</p>
+                      <p>{membershipDuration}</p>
+                    </div>
+                  </div>
+                  {membershipError ? <p className="event-action-error">{membershipError}</p> : null}
+                  {membershipMessage ? <p className="event-action-success">{membershipMessage}</p> : null}
+                  <button
+                    className="btn btn-primary membership-payment-button"
+                    type="button"
+                    disabled={membershipPaymentLoading}
+                    onClick={handleMembershipPayClick}
+                  >
+                    {!authUser
+                      ? "Sign in to pay"
+                      : membershipPaymentLoading
+                      ? "Opening checkout..."
+                      : "Pay with Paystack"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {authUser && (canUseSessionPlayerActions || statsLoading) ? (
               <div className="event-detail-actions session-player-actions">

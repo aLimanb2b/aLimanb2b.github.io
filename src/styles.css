@@ -2868,6 +2868,45 @@ section {
     width: 100%;
 }
 
+.session-membership-action {
+    border-color: rgba(14, 95, 70, 0.24);
+    background: rgba(14, 95, 70, 0.04);
+}
+
+.membership-modal-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.membership-modal-details > div {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 14px;
+}
+
+.membership-modal-details .label {
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.membership-modal-details p:not(.label) {
+    margin: 0;
+    color: var(--text);
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.membership-payment-button {
+    width: 100%;
+}
+
 .event-detail-grid {
     display: grid;
     grid-template-columns: 1fr;
