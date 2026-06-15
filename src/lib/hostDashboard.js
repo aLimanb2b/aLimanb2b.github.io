@@ -1,8 +1,25 @@
 import { apiRequest } from "./api.js";
 
 const HOST_SESSION_KEY = "boxtobox_host_session";
+const HOST_SESSION_REFRESH_SKEW_MS = 60 * 1000;
+
+let startupRefreshPromise = null;
+
+function readLocalStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return window.localStorage;
+  } catch (error) {
+    return null;
+  }
+}
 
 function readSessionStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
   try {
     return window.sessionStorage;
   } catch (error) {
@@ -11,7 +28,24 @@ function readSessionStorage() {
 }
 
 export function getStoredHostSession() {
-  const storage = readSessionStorage();
+  const storage = readLocalStorage();
+  const fallbackStorage = readSessionStorage();
+  if (!storage) {
+    return readStoredHostSession(fallbackStorage);
+  }
+  const session = readStoredHostSession(storage);
+  if (session) {
+    return session;
+  }
+  const fallbackSession = readStoredHostSession(fallbackStorage);
+  if (fallbackSession) {
+    setStoredHostSession(fallbackSession);
+    fallbackStorage?.removeItem(HOST_SESSION_KEY);
+  }
+  return fallbackSession;
+}
+
+function readStoredHostSession(storage) {
   if (!storage) {
     return null;
   }
@@ -35,18 +69,21 @@ export function getStoredHostSession() {
 }
 
 export function setStoredHostSession(session) {
-  const storage = readSessionStorage();
+  const storage = readLocalStorage();
   if (!storage) {
     return;
   }
   storage.setItem(HOST_SESSION_KEY, JSON.stringify(session));
+  readSessionStorage()?.removeItem(HOST_SESSION_KEY);
 }
 
 export function clearStoredHostSession() {
-  const storage = readSessionStorage();
+  startupRefreshPromise = null;
+  const storage = readLocalStorage();
   if (storage) {
     storage.removeItem(HOST_SESSION_KEY);
   }
+  readSessionStorage()?.removeItem(HOST_SESSION_KEY);
 }
 
 export async function requestHostAuthCode() {
@@ -81,7 +118,7 @@ function shouldRefreshSession(session) {
   if (!session?.token || !session?.expires_at) {
     return true;
   }
-  return new Date(session.expires_at).getTime() <= Date.now();
+  return new Date(session.expires_at).getTime() <= Date.now() + HOST_SESSION_REFRESH_SKEW_MS;
 }
 
 export async function refreshHostSession(session = getStoredHostSession()) {
@@ -101,16 +138,31 @@ export async function refreshHostSession(session = getStoredHostSession()) {
     refreshToken: result.host_refresh_token,
     expires_at: result.expires_at,
     refresh_expires_at: result.refresh_expires_at,
-    host: result.host,
+    host: result.host || session.host,
   };
   setStoredHostSession(nextSession);
   return nextSession;
 }
 
-export async function fetchHostDashboard(session = getStoredHostSession()) {
+export function refreshStoredHostSessionOnce() {
+  if (!startupRefreshPromise) {
+    const session = getStoredHostSession();
+    if (!session?.refreshToken) {
+      return Promise.resolve(session);
+    }
+    startupRefreshPromise = refreshHostSession(session).catch((error) => {
+      clearStoredHostSession();
+      throw error;
+    });
+  }
+  return startupRefreshPromise;
+}
+
+export async function fetchHostDashboard(session = getStoredHostSession(), { onSessionRefreshed } = {}) {
   let activeSession = session;
   if (shouldRefreshSession(activeSession)) {
     activeSession = await refreshHostSession(activeSession);
+    onSessionRefreshed?.(activeSession);
   }
   if (!activeSession?.token) {
     const err = new Error("Host authentication required.");
@@ -126,6 +178,7 @@ export async function fetchHostDashboard(session = getStoredHostSession()) {
   } catch (err) {
     if (err?.status === 401 && activeSession?.refreshToken) {
       const refreshed = await refreshHostSession(activeSession);
+      onSessionRefreshed?.(refreshed);
       return await apiRequest("/v2.7/host/dashboard", {
         headers: {
           "x-host-session-token": refreshed.token,

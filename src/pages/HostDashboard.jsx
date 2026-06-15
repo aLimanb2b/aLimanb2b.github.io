@@ -5,6 +5,7 @@ import {
   clearStoredHostSession,
   fetchHostDashboard,
   getStoredHostSession,
+  refreshStoredHostSessionOnce,
   requestHostAuthCode,
   verifyHostAuthCode,
 } from "../lib/hostDashboard.js";
@@ -982,6 +983,7 @@ function Customers() {
 
 export default function HostDashboard() {
   const [session, setSession] = useState(() => getStoredHostSession());
+  const [refreshingSession, setRefreshingSession] = useState(() => Boolean(getStoredHostSession()?.refreshToken));
   const [activeView, setActiveView] = useState("overview");
   const [selectedItem, setSelectedItem] = useState(null);
   const [dashboard, setDashboard] = useState(null);
@@ -990,12 +992,54 @@ export default function HostDashboard() {
 
   useEffect(() => {
     let active = true;
+    const storedSession = getStoredHostSession();
+    if (!storedSession?.refreshToken) {
+      setRefreshingSession(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setRefreshingSession(true);
+    refreshStoredHostSessionOnce()
+      .then((nextSession) => {
+        if (active) {
+          setSession(nextSession);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSession(null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setRefreshingSession(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     if (!session?.token) {
+      return undefined;
+    }
+    if (refreshingSession) {
       return undefined;
     }
     setLoading(true);
     setError("");
-    fetchHostDashboard(session)
+    fetchHostDashboard(session, {
+      onSessionRefreshed: (nextSession) => {
+        if (active) {
+          setSession(nextSession);
+        }
+      },
+    })
       .then((payload) => {
         if (active) {
           setDashboard(payload);
@@ -1018,7 +1062,7 @@ export default function HostDashboard() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [refreshingSession, session]);
 
   const host = dashboard?.host || session?.host;
   const sessions = useMemo(() => dashboard?.sessions || [], [dashboard]);
@@ -1026,6 +1070,7 @@ export default function HostDashboard() {
 
   const logout = async () => {
     clearStoredHostSession();
+    setRefreshingSession(false);
     setSession(null);
     setDashboard(null);
     setSelectedItem(null);
@@ -1037,13 +1082,27 @@ export default function HostDashboard() {
   };
 
   const refreshSelectedItem = async (item) => {
-    const payload = await fetchHostDashboard(session);
+    const payload = await fetchHostDashboard(getStoredHostSession() || session, {
+      onSessionRefreshed: setSession,
+    });
     setDashboard(payload);
     const collection = item.content_type === "session" ? payload?.sessions || [] : payload?.events || [];
     const nextItem = collection.find((candidate) => candidate.id === item.id) || item;
     setSelectedItem(nextItem);
     return nextItem;
   };
+
+  if (refreshingSession) {
+    return (
+      <main className="host-login-screen">
+        <section className="host-login-panel">
+          <p className="host-dashboard-kicker">Host dashboard</p>
+          <h1>Refreshing session...</h1>
+          <p>Restoring your verified host session.</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!session?.token) {
     return <LoginScreen onAuthenticated={setSession} />;

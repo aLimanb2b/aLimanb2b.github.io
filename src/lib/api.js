@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "./firebase.js";
 
 export const API_BASE = "https://us-central1-boxtobox-fa0e1.cloudfunctions.net/api";
@@ -18,6 +19,18 @@ function buildQueryString(params) {
 
 async function getIdToken() {
   const auth = getFirebaseAuth();
+  if (!auth.currentUser) {
+    if (typeof auth.authStateReady === "function") {
+      await auth.authStateReady();
+    } else {
+      await new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, () => {
+          unsubscribe();
+          resolve();
+        });
+      });
+    }
+  }
   const user = auth.currentUser;
   if (!user) {
     return null;
