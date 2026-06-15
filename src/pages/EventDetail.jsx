@@ -456,7 +456,7 @@ export default function EventDetail() {
       setEvent(null);
       setStatus({ title: "Loading...", summary: "" });
       try {
-        const response = await fetch(`${API_BASE}/v1.5/event/${encodeURIComponent(targetId)}`);
+        const response = await fetch(`${API_BASE}/v1.5/event/${encodeURIComponent(targetId)}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error("Failed to load event");
         }

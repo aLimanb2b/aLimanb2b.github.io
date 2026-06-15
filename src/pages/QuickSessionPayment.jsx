@@ -77,7 +77,11 @@ export default function QuickSessionPayment() {
       setErrorMessage("");
       setStatusMessage("Loading session...");
       try {
-        const data = await apiRequest(`/v2/session/${encodeURIComponent(id)}`, { authRequired: false });
+        const data = await apiRequest(`/v2/session/${encodeURIComponent(id)}`, {
+          authRequired: false,
+          cache: "no-store",
+          query: { include_stats: "false" },
+        });
         if (!isActive) {
           return;
         }

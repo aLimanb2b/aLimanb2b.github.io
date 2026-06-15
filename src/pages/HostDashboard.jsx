@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../lib/api.js";
 import { signInWithEmail, signOut } from "../lib/auth.js";
 import {
   clearStoredHostSession,
+  fetchHostContentDetail,
   fetchHostDashboard,
   getStoredHostSession,
   refreshStoredHostSessionOnce,
@@ -222,11 +223,16 @@ function RevenueChart({ days = [], currency = "NGN" }) {
 }
 
 function Overview({ overview }) {
+  const revenueDeferred = overview?.revenue_status === "detail_only";
   return (
     <>
       <section className="host-dashboard-metrics">
         <Metric label="Hosted content" value={overview?.total_hosted_content || 0} detail="Events and sessions" />
-        <Metric label="Total revenue" value={formatMoney(overview?.total_revenue, overview?.currency)} detail="Paid registrations and memberships" />
+        <Metric
+          label="Total revenue"
+          value={revenueDeferred ? "Detail view" : formatMoney(overview?.total_revenue, overview?.currency)}
+          detail={revenueDeferred ? "Open content to view revenue" : "Paid registrations and memberships"}
+        />
       </section>
       <RevenueChart days={overview?.revenue_by_day || []} currency={overview?.currency} />
     </>
@@ -281,10 +287,11 @@ function ContentTable({ items, title, type, onSelect }) {
   );
 }
 
-function HostAttendeeCard({ attendee, actionLabel = "", actionDisabled = false, onAction = null }) {
+function HostAttendeeCard({ attendee, actionLabel = "", actionDisabled = false, onAction = null, statusLabel: customStatusLabel = "" }) {
   const name = attendee.name || "Registered user";
   const initial = name.trim() ? name.trim()[0].toUpperCase() : "U";
   const isReserved = String(attendee?.registration_status || "").toLowerCase() === "reserved";
+  const label = customStatusLabel || getReservationLabel(attendee);
 
   return (
     <li className="host-reserved-user-card">
@@ -294,7 +301,7 @@ function HostAttendeeCard({ attendee, actionLabel = "", actionDisabled = false, 
         <p>{attendee.email || attendee.id}</p>
         <div className="host-reserved-meta">
           <span className={`session-user-status${isReserved ? " reserved" : ""}`}>
-            {getReservationLabel(attendee)}
+            {label}
           </span>
           {onAction ? (
             <button
@@ -399,6 +406,160 @@ function buildDoublesAssignments(players) {
     teams,
     unpaired_user: unpaired ? { id: unpaired.id, name: displayParticipantName(unpaired) } : null,
   };
+}
+
+function eventRegisteredUsers(item) {
+  return [...(item.attendees || [])]
+    .sort((left, right) => displayParticipantName(left).localeCompare(displayParticipantName(right), undefined, { sensitivity: "base" }));
+}
+
+function EventHostTools({ item, onLoadAttendees, loading = false }) {
+  const [activeTool, setActiveTool] = useState(null);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
+  const [attendeesError, setAttendeesError] = useState("");
+
+  const attendees = useMemo(() => eventRegisteredUsers(item), [item.attendees]);
+  const registeredCount = Number(item.registered_count || attendees.length || 0);
+  const attendeesNeedFetch = registeredCount > 0 && attendees.length === 0;
+  const tools = [
+    {
+      id: "registered-users",
+      title: "Registered Users",
+      description: `${registeredCount} registered${item.capacity ? ` of ${item.capacity}` : ""}`,
+      iconName: "groups",
+      disabled: loading,
+    },
+  ];
+
+  useEffect(() => {
+    setActiveTool(null);
+    setAttendeesError("");
+    setAttendeesLoading(false);
+  }, [item.id]);
+
+  const loadAttendees = async ({ force = false } = {}) => {
+    if (!attendeesNeedFetch && !force) {
+      return item;
+    }
+    setAttendeesLoading(true);
+    setAttendeesError("");
+    try {
+      return await onLoadAttendees(item);
+    } catch (error) {
+      setAttendeesError(error?.message || "Unable to load registered users right now.");
+      return null;
+    } finally {
+      setAttendeesLoading(false);
+    }
+  };
+
+  const openTool = (toolId) => {
+    const tool = tools.find((candidate) => candidate.id === toolId);
+    if (!tool || tool.disabled) {
+      return;
+    }
+    setActiveTool(toolId);
+    setAttendeesError("");
+    if (toolId === "registered-users") {
+      loadAttendees();
+    }
+  };
+
+  const closeTool = () => {
+    if (attendeesLoading) {
+      return;
+    }
+    setActiveTool(null);
+  };
+
+  return (
+    <div className="host-tools-panel">
+      <div>
+        <p className="host-dashboard-kicker">Host tools</p>
+        <h3>Choose a host action</h3>
+      </div>
+
+      <div className="host-tools-grid">
+        {tools.map((tool) => (
+          <button
+            className={`host-tool-tile${tool.disabled ? " disabled" : ""}`}
+            type="button"
+            key={tool.id}
+            disabled={tool.disabled}
+            aria-disabled={tool.disabled}
+            onClick={() => openTool(tool.id)}
+          >
+            <span className="host-tool-icon-shell">
+              <MaterialIcon name={tool.iconName} />
+            </span>
+            <span className="host-tool-title">{tool.title}</span>
+            <span className="host-tool-description">{tool.description}</span>
+          </button>
+        ))}
+      </div>
+
+      {activeTool === "registered-users" ? (
+        <div className="host-tool-modal-overlay" role="presentation" onClick={closeTool}>
+          <div
+            className="host-tool-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="event-registered-users-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="host-tool-modal-header">
+              <div>
+                <p className="host-dashboard-kicker">Host tool</p>
+                <h3 id="event-registered-users-title">Registered Users</h3>
+              </div>
+              <button
+                className="host-tool-modal-close"
+                type="button"
+                aria-label="Close host tool"
+                disabled={attendeesLoading}
+                onClick={closeTool}
+              >
+                x
+              </button>
+            </div>
+
+            <div className="host-tool-modal-body">
+              <div className="host-tool-modal-actions">
+                <p>{registeredCount} registered{item.capacity ? ` of ${item.capacity}` : ""}</p>
+                <button
+                  className="host-dashboard-button"
+                  type="button"
+                  disabled={attendeesLoading}
+                  onClick={() => loadAttendees({ force: true })}
+                >
+                  {attendeesLoading ? "Refreshing..." : "Refresh"}
+                </button>
+              </div>
+              {attendeesError ? <p className="host-dashboard-error">{attendeesError}</p> : null}
+              {attendeesLoading && !attendees.length ? <div className="host-tools-empty">Loading registered users</div> : null}
+              {!attendeesLoading && !attendeesError && registeredCount === 0 ? (
+                <div className="host-tools-empty">No registered users yet</div>
+              ) : null}
+              {!attendeesLoading && !attendeesError && registeredCount > 0 && !attendees.length ? (
+                <div className="host-tools-empty">Registered user details are not available yet</div>
+              ) : null}
+              {attendees.length ? (
+                <ul className="host-reserved-users">
+                  {attendees.map((attendee) => (
+                    <HostAttendeeCard
+                      key={attendee.id}
+                      attendee={attendee}
+                      statusLabel={statusLabel(attendee.payment_status || "registered")}
+                    />
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function SessionHostTools({ item, onRefresh }) {
@@ -930,7 +1091,8 @@ function SessionHostTools({ item, onRefresh }) {
   );
 }
 
-function ContentDetail({ item, onBack, onRefresh }) {
+function ContentDetail({ item, onBack, onRefresh, onLoadEventAttendees, loading = false, error = "" }) {
+  const revenueDeferred = item.revenue_status === "detail_only" || item.total_revenue === null || item.total_revenue === undefined;
   const membershipFeeValue = item.content_type === "session" && item.membership_required
     ? formatMoney(item.membership_fee, item.membership_currency || item.currency)
     : "N/A";
@@ -948,21 +1110,20 @@ function ContentDetail({ item, onBack, onRefresh }) {
           <p>{locationText(item.location)}</p>
         </div>
         <div className="host-detail-grid">
-          <Metric label="Total revenue" value={formatMoney(item.total_revenue, item.currency)} detail="Paid transactions" />
+          <Metric label="Starts" value={formatDate(item.starts_at || item.starts_display)} detail={item.deadline ? `Deadline ${formatDate(item.deadline)}` : "Schedule"} />
+          <Metric label="Total revenue" value={revenueDeferred ? "Detail only" : formatMoney(item.total_revenue, item.currency)} detail={revenueDeferred ? "Revenue is not loaded here" : "Paid transactions"} />
           <Metric label="Registered users" value={item.registered_count || 0} detail={`${item.capacity || 0} capacity`} />
           <Metric label="Registration fee" value={formatMoney(item.registration_fee, item.currency)} detail={item.content_type === "session" ? "Session entry" : "Event entry"} />
           {item.content_type === "session" ? (
             <Metric label="Membership fee" value={membershipFeeValue} detail={membershipFeeDetail} />
           ) : null}
         </div>
+        {loading ? <div className="host-dashboard-empty">Loading content detail</div> : null}
+        {error ? <div className="host-dashboard-empty">{error}</div> : null}
         {item.content_type === "session" ? (
           <SessionHostTools item={item} onRefresh={onRefresh} />
         ) : (
-          <div className="host-tools-panel">
-            <p className="host-dashboard-kicker">Host tools</p>
-            <h3>Coming soon</h3>
-            <p>Tools for managing this {item.content_type} will be added here later.</p>
-          </div>
+          <EventHostTools item={item} onLoadAttendees={onLoadEventAttendees} loading={loading} />
         )}
       </div>
     </section>
@@ -989,6 +1150,9 @@ export default function HostDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const detailRequestIdRef = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -1068,12 +1232,26 @@ export default function HostDashboard() {
   const sessions = useMemo(() => dashboard?.sessions || [], [dashboard]);
   const events = useMemo(() => dashboard?.events || [], [dashboard]);
 
+  const clearSelectedItem = () => {
+    detailRequestIdRef.current += 1;
+    setSelectedItem(null);
+    setDetailLoading(false);
+    setDetailError("");
+  };
+
+  const detailOptionsForItem = (item) => ({
+    includeRevenue: false,
+    includeAttendees: item?.content_type === "session",
+  });
+
   const logout = async () => {
     clearStoredHostSession();
     setRefreshingSession(false);
     setSession(null);
     setDashboard(null);
     setSelectedItem(null);
+    setDetailLoading(false);
+    setDetailError("");
     try {
       await signOut();
     } catch (error) {
@@ -1082,14 +1260,93 @@ export default function HostDashboard() {
   };
 
   const refreshSelectedItem = async (item) => {
-    const payload = await fetchHostDashboard(getStoredHostSession() || session, {
-      onSessionRefreshed: setSession,
-    });
-    setDashboard(payload);
-    const collection = item.content_type === "session" ? payload?.sessions || [] : payload?.events || [];
-    const nextItem = collection.find((candidate) => candidate.id === item.id) || item;
-    setSelectedItem(nextItem);
-    return nextItem;
+    const requestId = ++detailRequestIdRef.current;
+    setDetailLoading(true);
+    setDetailError("");
+    try {
+      const payload = await fetchHostDashboard(getStoredHostSession() || session, {
+        onSessionRefreshed: setSession,
+      });
+      if (requestId === detailRequestIdRef.current) {
+        setDashboard(payload);
+      }
+      const nextItem = await fetchHostContentDetail(
+        { contentType: item.content_type, id: item.id },
+        getStoredHostSession() || session,
+        { onSessionRefreshed: setSession, ...detailOptionsForItem(item) },
+      );
+      if (requestId === detailRequestIdRef.current) {
+        setSelectedItem(nextItem);
+      }
+      return nextItem;
+    } catch (err) {
+      if (requestId === detailRequestIdRef.current) {
+        setDetailError(err?.message || "Unable to refresh host content.");
+      }
+      throw err;
+    } finally {
+      if (requestId === detailRequestIdRef.current) {
+        setDetailLoading(false);
+      }
+    }
+  };
+
+  const loadEventAttendees = async (item) => {
+    const requestId = ++detailRequestIdRef.current;
+    setDetailError("");
+    try {
+      const detail = await fetchHostContentDetail(
+        { contentType: item.content_type, id: item.id },
+        getStoredHostSession() || session,
+        {
+          onSessionRefreshed: setSession,
+          includeRevenue: false,
+          includeAttendees: true,
+        },
+      );
+      if (requestId === detailRequestIdRef.current) {
+        setSelectedItem(detail);
+      }
+      return detail;
+    } catch (err) {
+      if (requestId === detailRequestIdRef.current) {
+        setDetailError(err?.message || "Unable to load registered users.");
+      }
+      if (err?.status === 401 || err?.status === 403) {
+        clearStoredHostSession();
+        setSession(null);
+      }
+      throw err;
+    }
+  };
+
+  const selectItem = async (item) => {
+    const requestId = ++detailRequestIdRef.current;
+    setSelectedItem(item);
+    setDetailLoading(true);
+    setDetailError("");
+    try {
+      const detail = await fetchHostContentDetail(
+        { contentType: item.content_type, id: item.id },
+        getStoredHostSession() || session,
+        { onSessionRefreshed: setSession, ...detailOptionsForItem(item) },
+      );
+      if (requestId === detailRequestIdRef.current) {
+        setSelectedItem(detail);
+      }
+    } catch (err) {
+      if (requestId === detailRequestIdRef.current) {
+        setDetailError(err?.message || "Unable to load host content.");
+      }
+      if (err?.status === 401 || err?.status === 403) {
+        clearStoredHostSession();
+        setSession(null);
+      }
+    } finally {
+      if (requestId === detailRequestIdRef.current) {
+        setDetailLoading(false);
+      }
+    }
   };
 
   if (refreshingSession) {
@@ -1117,7 +1374,7 @@ export default function HostDashboard() {
         setActiveView={setActiveView}
         host={host}
         onLogout={logout}
-        onClearDetail={() => setSelectedItem(null)}
+        onClearDetail={clearSelectedItem}
       />
       <main className="host-dashboard-main">
         <header className="host-dashboard-header">
@@ -1132,14 +1389,21 @@ export default function HostDashboard() {
         {error ? <div className="host-dashboard-empty">{error}</div> : null}
 
         {!loading && !error && selectedItem ? (
-          <ContentDetail item={selectedItem} onBack={() => setSelectedItem(null)} onRefresh={refreshSelectedItem} />
+          <ContentDetail
+            item={selectedItem}
+            onBack={clearSelectedItem}
+            onRefresh={refreshSelectedItem}
+            onLoadEventAttendees={loadEventAttendees}
+            loading={detailLoading}
+            error={detailError}
+          />
         ) : null}
         {!loading && !error && !selectedItem && activeView === "overview" ? <Overview overview={dashboard?.overview} /> : null}
         {!loading && !error && !selectedItem && activeView === "sessions" ? (
-          <ContentTable items={sessions} title="Sessions" type="sessions" onSelect={setSelectedItem} />
+          <ContentTable items={sessions} title="Sessions" type="sessions" onSelect={selectItem} />
         ) : null}
         {!loading && !error && !selectedItem && activeView === "events" ? (
-          <ContentTable items={events} title="Events" type="events" onSelect={setSelectedItem} />
+          <ContentTable items={events} title="Events" type="events" onSelect={selectItem} />
         ) : null}
         {!loading && !error && !selectedItem && activeView === "customers" ? <Customers /> : null}
       </main>

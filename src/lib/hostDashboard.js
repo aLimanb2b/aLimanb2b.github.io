@@ -171,6 +171,7 @@ export async function fetchHostDashboard(session = getStoredHostSession(), { onS
   }
   try {
     return await apiRequest("/v2.7/host/dashboard", {
+      cache: "no-store",
       headers: {
         "x-host-session-token": activeSession.token,
       },
@@ -180,10 +181,56 @@ export async function fetchHostDashboard(session = getStoredHostSession(), { onS
       const refreshed = await refreshHostSession(activeSession);
       onSessionRefreshed?.(refreshed);
       return await apiRequest("/v2.7/host/dashboard", {
+        cache: "no-store",
         headers: {
           "x-host-session-token": refreshed.token,
         },
       });
+    }
+    throw err;
+  }
+}
+
+export async function fetchHostContentDetail(
+  { contentType, id },
+  session = getStoredHostSession(),
+  { onSessionRefreshed, includeRevenue = false, includeAttendees = contentType === "session" } = {},
+) {
+  let activeSession = session;
+  if (shouldRefreshSession(activeSession)) {
+    activeSession = await refreshHostSession(activeSession);
+    onSessionRefreshed?.(activeSession);
+  }
+  if (!activeSession?.token) {
+    const err = new Error("Host authentication required.");
+    err.code = "HOST_AUTH_REQUIRED";
+    throw err;
+  }
+
+  const requestDetail = (hostSession) => {
+    const query = {
+      include_revenue: includeRevenue ? "true" : "false",
+      include_attendees: includeAttendees ? "true" : "false",
+    };
+    return apiRequest(
+      `/v2.7/host/content/${encodeURIComponent(contentType)}/${encodeURIComponent(id)}`,
+      {
+        cache: "no-store",
+        query,
+        headers: {
+          "x-host-session-token": hostSession.token,
+        },
+      },
+    );
+  };
+
+  try {
+    return await requestDetail(activeSession);
+  } catch (err) {
+    if (err?.status === 401 && activeSession?.refreshToken) {
+      const refreshed = await refreshHostSession(activeSession);
+      onSessionRefreshed?.(refreshed);
+      return await requestDetail(refreshed);
     }
     throw err;
   }

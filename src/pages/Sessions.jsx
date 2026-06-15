@@ -27,9 +27,11 @@ export default function Sessions() {
       try {
         const data = await apiRequest("/v2/sessions", {
           authRequired: false,
+          cache: "no-store",
           query: {
             page: currentPage,
             page_size: PAGE_SIZE,
+            lightweight: "true",
           },
         });
         if (!isActive) {

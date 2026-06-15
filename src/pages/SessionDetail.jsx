@@ -115,7 +115,11 @@ export default function SessionDetail() {
     }
     setStatus("Loading session...");
     try {
-      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, { authRequired: false });
+      const data = await apiRequest(`/v2/session/${encodeURIComponent(targetId)}`, {
+        authRequired: false,
+        cache: "no-store",
+        query: { include_stats: "false" },
+      });
       setSession(data);
       setStatsBoard((current) => data?.session_stats ? {
         ...data.session_stats,

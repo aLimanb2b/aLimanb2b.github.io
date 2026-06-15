@@ -38,7 +38,7 @@ async function getIdToken() {
   return await user.getIdToken();
 }
 
-export async function apiRequest(path, { method = "GET", query, body, authRequired = true, headers: extraHeaders = {} } = {}) {
+export async function apiRequest(path, { method = "GET", query, body, authRequired = true, headers: extraHeaders = {}, cache = "default" } = {}) {
   const url = `${API_BASE}${path}${buildQueryString(query)}`;
   const headers = {
     "Content-Type": "application/json",
@@ -58,6 +58,7 @@ export async function apiRequest(path, { method = "GET", query, body, authRequir
   const response = await fetch(url, {
     method,
     headers,
+    cache,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
